@@ -22,22 +22,18 @@ export class UserService {
   // CREATE USER (REGISTER)
   // -----------------------------------------------------
   async create(dto: CreateUserDto, roleName: string = 'Customer'): Promise<User> {
-    // Check if email exists
     const existingUser = await this.findByEmail(dto.email);
     if (existingUser) {
       throw new BadRequestException(`User with email ${dto.email} already exists`);
     }
 
-    // Fetch role
     const role = await this.roleRepository.findOne({ where: { name: roleName } });
     if (!role) {
       throw new NotFoundException(`Role "${roleName}" not found`);
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    // Create user entity
     const user = this.userRepository.create({
       ...dto,
       password: hashedPassword,
@@ -85,6 +81,8 @@ export class UserService {
   async findByEmailWithPassword(email: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { email },
+
+      // Selecting fields manually, including role fields
       select: {
         id: true,
         name: true,
@@ -99,7 +97,9 @@ export class UserService {
           description: true,
         },
       },
-      relations: ['role'],
+
+      // ❌ FIX: remove relations to prevent JOIN duplication
+      // relations: ['role'],  <-- removed
     });
   }
 
@@ -117,7 +117,6 @@ export class UserService {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException(`User with id ${id} not found`);
 
-    // Hash password if updating
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
     }
