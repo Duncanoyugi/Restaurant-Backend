@@ -1,4 +1,3 @@
-// backend\src\review\review.controller.ts
 import { 
   Controller, 
   Get, 
@@ -14,6 +13,15 @@ import {
   HttpCode,
   ParseUUIDPipe
 } from '@nestjs/common';
+import { 
+  ApiTags, 
+  ApiOperation, 
+  ApiResponse, 
+  ApiBody, 
+  ApiParam, 
+  ApiQuery,
+  ApiBearerAuth 
+} from '@nestjs/swagger';
 import { ReviewService } from './review.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
@@ -22,25 +30,39 @@ import { ReviewQueryDto } from './dto/review-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-// FIX: Import from the correct location
 import { UserRoleEnum } from '../user/entities/user.types';
 
+@ApiTags('reviews')
 @Controller('reviews')
 export class ReviewController {
   constructor(private readonly reviewService: ReviewService) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Create a new review' })
+  @ApiResponse({ status: 201, description: 'Review created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ type: CreateReviewDto })
   async create(@Body() createReviewDto: CreateReviewDto, @Request() req) {
     return this.reviewService.create(createReviewDto, req.user.id);
   }
 
   @Get()
+  @ApiOperation({ summary: 'Get all reviews with filtering' })
+  @ApiResponse({ status: 200, description: 'Reviews retrieved successfully' })
+  @ApiQuery({ type: ReviewQueryDto })
   async findAll(@Query() query: ReviewQueryDto) {
     return this.reviewService.findAll(query);
   }
 
   @Get('restaurant/:restaurantId')
+  @ApiOperation({ summary: 'Get reviews by restaurant' })
+  @ApiResponse({ status: 200, description: 'Restaurant reviews retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
+  @ApiQuery({ type: ReviewQueryDto })
   async findByRestaurant(
     @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
     @Query() query: ReviewQueryDto,
@@ -49,6 +71,11 @@ export class ReviewController {
   }
 
   @Get('menu-item/:menuItemId')
+  @ApiOperation({ summary: 'Get reviews by menu item' })
+  @ApiResponse({ status: 200, description: 'Menu item reviews retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Menu item not found' })
+  @ApiParam({ name: 'menuItemId', description: 'Menu item ID', type: String })
+  @ApiQuery({ type: ReviewQueryDto })
   async findByMenuItem(
     @Param('menuItemId', ParseUUIDPipe) menuItemId: string,
     @Query() query: ReviewQueryDto,
@@ -57,17 +84,33 @@ export class ReviewController {
   }
 
   @Get('stats/restaurant/:restaurantId')
+  @ApiOperation({ summary: 'Get restaurant review statistics' })
+  @ApiResponse({ status: 200, description: 'Review statistics retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
   async getRestaurantStats(@Param('restaurantId', ParseUUIDPipe) restaurantId: string) {
     return this.reviewService.getRestaurantReviewStats(restaurantId);
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get review by ID' })
+  @ApiResponse({ status: 200, description: 'Review retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Review not found' })
+  @ApiParam({ name: 'id', description: 'Review ID', type: String })
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.reviewService.findOne(id);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Update review by ID' })
+  @ApiResponse({ status: 200, description: 'Review updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Can only update own reviews' })
+  @ApiResponse({ status: 404, description: 'Review not found' })
+  @ApiParam({ name: 'id', description: 'Review ID', type: String })
+  @ApiBody({ type: UpdateReviewDto })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateReviewDto: UpdateReviewDto,
@@ -79,6 +122,13 @@ export class ReviewController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Delete review by ID' })
+  @ApiResponse({ status: 204, description: 'Review deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Can only delete own reviews' })
+  @ApiResponse({ status: 404, description: 'Review not found' })
+  @ApiParam({ name: 'id', description: 'Review ID', type: String })
   async remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
     return this.reviewService.remove(id, req.user.id);
   }
@@ -86,6 +136,14 @@ export class ReviewController {
   @Post(':id/response')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Add admin/owner response to review' })
+  @ApiResponse({ status: 200, description: 'Response added successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
+  @ApiResponse({ status: 404, description: 'Review not found' })
+  @ApiParam({ name: 'id', description: 'Review ID', type: String })
+  @ApiBody({ type: ReviewResponseDto })
   async addAdminResponse(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() responseDto: ReviewResponseDto,
@@ -96,6 +154,13 @@ export class ReviewController {
   @Post(':id/verify')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Verify review (Admin/Restaurant Owner only)' })
+  @ApiResponse({ status: 200, description: 'Review verified successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
+  @ApiResponse({ status: 404, description: 'Review not found' })
+  @ApiParam({ name: 'id', description: 'Review ID', type: String })
   async verifyReview(@Param('id', ParseUUIDPipe) id: string) {
     return this.reviewService.verifyReview(id);
   }

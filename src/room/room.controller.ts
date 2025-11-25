@@ -13,6 +13,14 @@ import {
   UseInterceptors,
   ClassSerializerInterceptor
 } from '@nestjs/common';
+import { 
+  ApiTags, 
+  ApiOperation, 
+  ApiResponse, 
+  ApiBody, 
+  ApiParam, 
+  ApiQuery 
+} from '@nestjs/swagger';
 import { RoomService } from './room.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
@@ -23,6 +31,7 @@ import { BookingSearchDto } from './dto/booking-search.dto';
 import { BookingStatusDto } from './dto/booking-status.dto';
 import { AvailabilityCheckDto } from './dto/availability-check.dto';
 
+@ApiTags('rooms')
 @Controller('rooms')
 @UseInterceptors(ClassSerializerInterceptor)
 export class RoomController {
@@ -30,26 +39,45 @@ export class RoomController {
 
   // Room endpoints
   @Post()
+  @ApiOperation({ summary: 'Create a new room' })
+  @ApiResponse({ status: 201, description: 'Room created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiBody({ type: CreateRoomDto })
   createRoom(@Body() createRoomDto: CreateRoomDto) {
     return this.roomService.createRoom(createRoomDto);
   }
 
   @Get()
+  @ApiOperation({ summary: 'Get all rooms with filtering' })
+  @ApiResponse({ status: 200, description: 'Rooms retrieved successfully' })
+  @ApiQuery({ type: RoomSearchDto })
   findAllRooms(@Query() searchDto: RoomSearchDto) {
     return this.roomService.findAllRooms(searchDto);
   }
 
   @Get('available')
+  @ApiOperation({ summary: 'Search available rooms' })
+  @ApiResponse({ status: 200, description: 'Available rooms retrieved successfully' })
+  @ApiQuery({ type: RoomSearchDto })
   searchAvailableRooms(@Query() searchDto: RoomSearchDto) {
     return this.roomService.searchAvailableRooms(searchDto);
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get room by ID' })
+  @ApiResponse({ status: 200, description: 'Room retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Room not found' })
+  @ApiParam({ name: 'id', description: 'Room ID', type: String })
   findRoomById(@Param('id', ParseUUIDPipe) id: string) {
     return this.roomService.findRoomById(id);
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: 'Update room by ID' })
+  @ApiResponse({ status: 200, description: 'Room updated successfully' })
+  @ApiResponse({ status: 404, description: 'Room not found' })
+  @ApiParam({ name: 'id', description: 'Room ID', type: String })
+  @ApiBody({ type: UpdateRoomDto })
   updateRoom(
     @Param('id', ParseUUIDPipe) id: string, 
     @Body() updateRoomDto: UpdateRoomDto
@@ -58,32 +86,56 @@ export class RoomController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete room by ID' })
+  @ApiResponse({ status: 200, description: 'Room deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Room not found' })
+  @ApiParam({ name: 'id', description: 'Room ID', type: String })
   removeRoom(@Param('id', ParseUUIDPipe) id: string) {
     return this.roomService.removeRoom(id);
   }
 
   // Room Booking endpoints
   @Post('bookings')
+  @ApiOperation({ summary: 'Create a new room booking' })
+  @ApiResponse({ status: 201, description: 'Room booking created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data or room not available' })
+  @ApiBody({ type: CreateRoomBookingDto })
   createRoomBooking(@Body() createBookingDto: CreateRoomBookingDto) {
     return this.roomService.createRoomBooking(createBookingDto);
   }
 
   @Get('bookings')
+  @ApiOperation({ summary: 'Get all room bookings with filtering' })
+  @ApiResponse({ status: 200, description: 'Bookings retrieved successfully' })
+  @ApiQuery({ type: BookingSearchDto })
   findAllBookings(@Query() searchDto: BookingSearchDto) {
     return this.roomService.findAllBookings(searchDto);
   }
 
   @Get('bookings/:id')
+  @ApiOperation({ summary: 'Get booking by ID' })
+  @ApiResponse({ status: 200, description: 'Booking retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  @ApiParam({ name: 'id', description: 'Booking ID', type: String })
   findBookingById(@Param('id', ParseUUIDPipe) id: string) {
     return this.roomService.findBookingById(id);
   }
 
   @Get('bookings/number/:bookingNumber')
+  @ApiOperation({ summary: 'Get booking by booking number' })
+  @ApiResponse({ status: 200, description: 'Booking retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  @ApiParam({ name: 'bookingNumber', description: 'Booking number', type: String })
   findBookingByNumber(@Param('bookingNumber') bookingNumber: string) {
     return this.roomService.findBookingByNumber(bookingNumber);
   }
 
   @Patch('bookings/:id')
+  @ApiOperation({ summary: 'Update booking by ID' })
+  @ApiResponse({ status: 200, description: 'Booking updated successfully' })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  @ApiParam({ name: 'id', description: 'Booking ID', type: String })
+  @ApiBody({ type: UpdateRoomBookingDto })
   updateBooking(
     @Param('id', ParseUUIDPipe) id: string, 
     @Body() updateBookingDto: UpdateRoomBookingDto
@@ -92,6 +144,11 @@ export class RoomController {
   }
 
   @Patch('bookings/:id/status')
+  @ApiOperation({ summary: 'Update booking status' })
+  @ApiResponse({ status: 200, description: 'Booking status updated successfully' })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  @ApiParam({ name: 'id', description: 'Booking ID', type: String })
+  @ApiBody({ type: BookingStatusDto })
   updateBookingStatus(
     @Param('id', ParseUUIDPipe) id: string, 
     @Body() statusDto: BookingStatusDto
@@ -100,6 +157,23 @@ export class RoomController {
   }
 
   @Post('bookings/:id/cancel')
+  @ApiOperation({ summary: 'Cancel booking' })
+  @ApiResponse({ status: 200, description: 'Booking cancelled successfully' })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  @ApiParam({ name: 'id', description: 'Booking ID', type: String })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        performedBy: {
+          type: 'string',
+          description: 'User who performed the cancellation',
+          example: 'customer@example.com'
+        }
+      },
+      required: []
+    }
+  })
   cancelBooking(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('performedBy') performedBy?: string
@@ -109,12 +183,22 @@ export class RoomController {
 
   // Availability endpoints
   @Post('check-availability')
+  @ApiOperation({ summary: 'Check room availability' })
+  @ApiResponse({ status: 200, description: 'Availability checked successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiBody({ type: AvailabilityCheckDto })
   checkAvailability(@Body() availabilityDto: AvailabilityCheckDto) {
     return this.roomService.checkAvailability(availabilityDto);
   }
 
   // Analytics endpoints
   @Get(':id/occupancy')
+  @ApiOperation({ summary: 'Get room occupancy statistics' })
+  @ApiResponse({ status: 200, description: 'Occupancy statistics retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Room not found' })
+  @ApiParam({ name: 'id', description: 'Room ID', type: String })
+  @ApiQuery({ name: 'startDate', description: 'Start date (YYYY-MM-DD)', required: true })
+  @ApiQuery({ name: 'endDate', description: 'End date (YYYY-MM-DD)', required: true })
   getRoomOccupancy(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('startDate') startDate: string,
@@ -124,6 +208,11 @@ export class RoomController {
   }
 
   @Get('restaurant/:restaurantId/upcoming-checkins')
+  @ApiOperation({ summary: 'Get upcoming check-ins for restaurant' })
+  @ApiResponse({ status: 200, description: 'Upcoming check-ins retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
+  @ApiQuery({ name: 'days', description: 'Days to look ahead', required: false, type: Number })
   getUpcomingCheckIns(
     @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
     @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number
@@ -132,6 +221,11 @@ export class RoomController {
   }
 
   @Get('restaurant/:restaurantId/upcoming-checkouts')
+  @ApiOperation({ summary: 'Get upcoming check-outs for restaurant' })
+  @ApiResponse({ status: 200, description: 'Upcoming check-outs retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
+  @ApiQuery({ name: 'days', description: 'Days to look ahead', required: false, type: Number })
   getUpcomingCheckOuts(
     @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
     @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number
