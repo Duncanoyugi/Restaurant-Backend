@@ -1,4 +1,3 @@
-// backend\src\review\review.service.ts
 import { 
   Injectable, 
   NotFoundException, 
@@ -15,6 +14,7 @@ import { ReviewQueryDto, ReviewSortBy } from './dto/review-query.dto';
 import { Restaurant } from '../restaurant/entities/restaurant.entity';
 import { MenuItem } from '../menu/entities/menu.entity';
 import { User } from '../user/entities/user.entity';
+import { UserRoleEnum } from '../user/entities/user.types';
 
 @Injectable()
 export class ReviewService {
@@ -29,7 +29,12 @@ export class ReviewService {
     private userRepository: Repository<User>,
   ) {}
 
-  async create(createReviewDto: CreateReviewDto, userId?: string) {
+  async create(createReviewDto: CreateReviewDto, userId?: string, userRole?: UserRoleEnum) {
+    // Only customers and admins can create reviews
+    if (!this.canCreateReview(userRole)) {
+      throw new ForbiddenException('Only customers and admins can create reviews');
+    }
+
     // Validate that either restaurantId or menuItemId is provided
     if (!createReviewDto.restaurantId && !createReviewDto.menuItemId) {
       throw new BadRequestException('Either restaurantId or menuItemId must be provided');
@@ -59,7 +64,7 @@ export class ReviewService {
       rating: createReviewDto.rating,
       comment: createReviewDto.comment,
       images: createReviewDto.images ? JSON.stringify(createReviewDto.images) : '',
-      verified: false,
+      verified: userRole === UserRoleEnum.ADMIN, // Auto-verify if admin
     };
 
     const review = this.reviewRepository.create(reviewData);
@@ -71,7 +76,7 @@ export class ReviewService {
     return this.formatReviewResponse(savedReview);
   }
 
-  async findAll(query: ReviewQueryDto) {
+  async findAll(query: ReviewQueryDto, userRole?: UserRoleEnum) {
     // FIX: Provide default values for page and limit
     const page = query.page || 1;
     const limit = query.limit || 10;
@@ -92,6 +97,11 @@ export class ReviewService {
 
     if (search) {
       where.comment = Like(`%${search}%`);
+    }
+
+    // For non-admin users, only show verified reviews or their own reviews
+    if (userRole && userRole !== UserRoleEnum.ADMIN) {
+      where.verified = true;
     }
 
     // FIX: Use proper FindOptionsOrder type
@@ -137,7 +147,7 @@ export class ReviewService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userId?: string, userRole?: UserRoleEnum) {
     const review = await this.reviewRepository.findOne({
       where: { id },
       relations: ['user', 'restaurant', 'menuItem'],
@@ -147,16 +157,29 @@ export class ReviewService {
       throw new NotFoundException(`Review with ID ${id} not found`);
     }
 
+    // Check if user can view this review
+    if (!this.canViewReview(review, userId, userRole)) {
+      throw new ForbiddenException('You do not have permission to view this review');
+    }
+
     return this.formatReviewResponse(review);
   }
 
-  async findByRestaurant(restaurantId: string, query: ReviewQueryDto) {
+  async findByRestaurant(restaurantId: string, query: ReviewQueryDto, userId?: string, userRole?: UserRoleEnum) {
     // FIX: Provide default values
     const page = query.page || 1;
     const limit = query.limit || 10;
 
+    // Build where condition with role-based filtering
+    const where: FindOptionsWhere<Review> = { restaurantId };
+    
+    // For non-admin users, only show verified reviews
+    if (userRole && userRole !== UserRoleEnum.ADMIN) {
+      where.verified = true;
+    }
+
     const [restaurantReviews, total] = await this.reviewRepository.findAndCount({
-      where: { restaurantId },
+      where,
       relations: ['user', 'menuItem'],
       skip: (page - 1) * limit,
       take: limit,
@@ -179,13 +202,21 @@ export class ReviewService {
     };
   }
 
-  async findByMenuItem(menuItemId: string, query: ReviewQueryDto) {
+  async findByMenuItem(menuItemId: string, query: ReviewQueryDto, userId?: string, userRole?: UserRoleEnum) {
     // FIX: Provide default values
     const page = query.page || 1;
     const limit = query.limit || 10;
 
+    // Build where condition with role-based filtering
+    const where: FindOptionsWhere<Review> = { menuItemId };
+    
+    // For non-admin users, only show verified reviews
+    if (userRole && userRole !== UserRoleEnum.ADMIN) {
+      where.verified = true;
+    }
+
     const [menuItemReviews, total] = await this.reviewRepository.findAndCount({
-      where: { menuItemId },
+      where,
       relations: ['user'],
       skip: (page - 1) * limit,
       take: limit,
@@ -208,7 +239,7 @@ export class ReviewService {
     };
   }
 
-  async update(id: string, updateReviewDto: UpdateReviewDto, userId?: string) {
+  async update(id: string, updateReviewDto: UpdateReviewDto, userId?: string, userRole?: UserRoleEnum) {
     const review = await this.reviewRepository.findOne({
       where: { id },
       relations: ['user', 'restaurant', 'menuItem'],
@@ -218,9 +249,9 @@ export class ReviewService {
       throw new NotFoundException(`Review with ID ${id} not found`);
     }
 
-    // Check if user owns the review (if userId is provided)
-    if (userId && review.userId !== userId) {
-      throw new ForbiddenException('You can only update your own reviews');
+    // Check if user can modify the review
+    if (!this.canModifyReview(review, userId, userRole)) {
+      throw new ForbiddenException('You do not have permission to update this review');
     }
 
     // If rating is being updated, we need to update aggregate ratings
@@ -244,8 +275,7 @@ export class ReviewService {
     return this.formatReviewResponse(updatedReview);
   }
 
-  // ADD THE MISSING REMOVE METHOD
-  async remove(id: string, userId?: string) {
+  async remove(id: string, userId?: string, userRole?: UserRoleEnum) {
     const review = await this.reviewRepository.findOne({
       where: { id },
       relations: ['user', 'restaurant', 'menuItem'],
@@ -255,9 +285,9 @@ export class ReviewService {
       throw new NotFoundException(`Review with ID ${id} not found`);
     }
 
-    // Check if user owns the review (if userId is provided)
-    if (userId && review.userId !== userId) {
-      throw new ForbiddenException('You can only delete your own reviews');
+    // Check if user can delete the review
+    if (!(await this.canDeleteReview(review, userId, userRole))) {
+      throw new ForbiddenException('You do not have permission to delete this review');
     }
 
     const restaurantId = review.restaurantId;
@@ -274,10 +304,9 @@ export class ReviewService {
     }
 
     // For 204 No Content, we don't return any data
-    // The method completes successfully without returning a value
   }
 
-  async addAdminResponse(id: string, responseDto: ReviewResponseDto) {
+  async addAdminResponse(id: string, responseDto: ReviewResponseDto, userId?: string, userRole?: UserRoleEnum) {
     const review = await this.reviewRepository.findOne({
       where: { id },
       relations: ['user', 'restaurant', 'menuItem'],
@@ -285,6 +314,11 @@ export class ReviewService {
 
     if (!review) {
       throw new NotFoundException(`Review with ID ${id} not found`);
+    }
+
+    // Check if user can respond to this review
+    if (!(await this.canRespondToReview(review, userId, userRole))) {
+      throw new ForbiddenException('You do not have permission to respond to this review');
     }
     
     review.adminResponse = responseDto.adminResponse;
@@ -295,7 +329,7 @@ export class ReviewService {
     return this.formatReviewResponse(updatedReview);
   }
 
-  async verifyReview(id: string) {
+  async verifyReview(id: string, userId?: string, userRole?: UserRoleEnum) {
     const review = await this.reviewRepository.findOne({
       where: { id },
       relations: ['user', 'restaurant', 'menuItem'],
@@ -305,6 +339,11 @@ export class ReviewService {
       throw new NotFoundException(`Review with ID ${id} not found`);
     }
 
+    // Check if user can verify reviews
+    if (!(await this.canVerifyReview(review, userId, userRole))) {
+      throw new ForbiddenException('You do not have permission to verify reviews');
+    }
+
     review.verified = true;
     
     // FIX: Save the review entity directly without formatting first
@@ -312,7 +351,12 @@ export class ReviewService {
     return this.formatReviewResponse(updatedReview);
   }
 
-  async getRestaurantReviewStats(restaurantId: string) {
+  async getRestaurantReviewStats(restaurantId: string, userId?: string, userRole?: UserRoleEnum) {
+    // Check if user can view restaurant stats
+    if (!this.canViewRestaurantStats(userRole)) {
+      throw new ForbiddenException('You do not have permission to view restaurant statistics');
+    }
+
     const stats = await this.reviewRepository
       .createQueryBuilder('review')
       .select('COUNT(review.id)', 'totalReviews')
@@ -356,6 +400,86 @@ export class ReviewService {
     };
   }
 
+  // ========== ROLE-BASED ACCESS CONTROL METHODS ==========
+
+  private canCreateReview(userRole?: UserRoleEnum): boolean {
+    return userRole === UserRoleEnum.CUSTOMER || userRole === UserRoleEnum.ADMIN;
+  }
+
+  private canViewReview(review: Review, userId?: string, userRole?: UserRoleEnum): boolean {
+    // Admin can view all reviews
+    if (userRole === UserRoleEnum.ADMIN) return true;
+    
+    // Review owner can view their own review
+    if (userId && review.userId === userId) return true;
+    
+    // Only show verified reviews to other users
+    return review.verified === true;
+  }
+
+  private canModifyReview(review: Review, userId?: string, userRole?: UserRoleEnum): boolean {
+    // Admin can modify any review
+    if (userRole === UserRoleEnum.ADMIN) return true;
+    
+    // Users can only modify their own reviews
+    return userId !== undefined && review.userId === userId;
+  }
+
+  private async canDeleteReview(review: Review, userId?: string, userRole?: UserRoleEnum): Promise<boolean> {
+    // Admin can delete any review
+    if (userRole === UserRoleEnum.ADMIN) return true;
+    
+    // Restaurant owners can delete reviews for their restaurants
+    if (userRole === UserRoleEnum.RESTAURANT_OWNER && review.restaurantId) {
+      return await this.isRestaurantOwner(review.restaurantId, userId);
+    }
+    
+    // Users can only delete their own reviews
+    return userId !== undefined && review.userId === userId;
+  }
+
+  private async canRespondToReview(review: Review, userId?: string, userRole?: UserRoleEnum): Promise<boolean> {
+    // Admin can respond to any review
+    if (userRole === UserRoleEnum.ADMIN) return true;
+    
+    // Restaurant owners can respond to reviews for their restaurants
+    if (userRole === UserRoleEnum.RESTAURANT_OWNER && review.restaurantId) {
+      return await this.isRestaurantOwner(review.restaurantId, userId);
+    }
+    
+    return false;
+  }
+
+  private async canVerifyReview(review: Review, userId?: string, userRole?: UserRoleEnum): Promise<boolean> {
+    // Admin can verify any review
+    if (userRole === UserRoleEnum.ADMIN) return true;
+    
+    // Restaurant owners can verify reviews for their restaurants
+    if (userRole === UserRoleEnum.RESTAURANT_OWNER && review.restaurantId) {
+      return await this.isRestaurantOwner(review.restaurantId, userId);
+    }
+    
+    return false;
+  }
+
+  private canViewRestaurantStats(userRole?: UserRoleEnum): boolean {
+    return userRole === UserRoleEnum.ADMIN || 
+           userRole === UserRoleEnum.RESTAURANT_OWNER || 
+           userRole === UserRoleEnum.RESTAURANT_STAFF;
+  }
+
+  private async isRestaurantOwner(restaurantId: string, userId?: string): Promise<boolean> {
+    if (!userId) return false;
+    
+    const restaurant = await this.restaurantRepository.findOne({
+      where: { id: restaurantId, ownerId: userId },
+    });
+    
+    return !!restaurant;
+  }
+
+  // ========== EXISTING HELPER METHODS ==========
+
   private async updateAggregateRatings(review: Review) {
     if (review.restaurantId) {
       await this.updateRestaurantRating(review.restaurantId);
@@ -376,9 +500,6 @@ export class ReviewService {
     // FIX: Use correct field names for Restaurant entity
     await this.restaurantRepository.update(restaurantId, {
       // Use the actual field names from your Restaurant entity
-      // If these fields don't exist, you may need to add them to the Restaurant entity
-      // averageRating: parseFloat(stats.averageRating) || 0,
-      // totalReviews: parseInt(stats.reviewCount) || 0,
     });
   }
 
@@ -393,9 +514,6 @@ export class ReviewService {
     // FIX: Use correct field names for MenuItem entity
     await this.menuItemRepository.update(menuItemId, {
       // Use the actual field names from your MenuItem entity
-      // If these fields don't exist, you may need to add them to the MenuItem entity
-      // averageRating: parseFloat(stats.averageRating) || 0,
-      // totalReviews: parseInt(stats.reviewCount) || 0,
     });
   }
 

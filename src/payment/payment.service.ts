@@ -1,4 +1,5 @@
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+// backend\src\payment\payment.service.ts
+import { Injectable, Logger, HttpException, HttpStatus, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,6 +14,9 @@ import { Invoice } from './entities/invoice.entity';
 import { Order } from '../order/entities/order.entity';
 import { Reservation } from '../reservation/entities/reservation.entity';
 import { RoomBooking } from '../room/entities/room-booking.entity';
+import { User } from '../user/entities/user.entity';
+import { UserRoleEnum } from '../user/entities/user.types';
+import { Restaurant } from '../restaurant/entities/restaurant.entity';
 
 // Paystack response interfaces
 interface PaystackInitializeResponse {
@@ -43,6 +47,7 @@ interface PaystackVerificationResponse {
     };
   };
 }
+
 interface PaystackRefundResponse {
   status: boolean;
   message: string;
@@ -66,6 +71,8 @@ export class PaymentService {
     private reservationRepository: Repository<Reservation>,
     @InjectRepository(RoomBooking)
     private roomBookingRepository: Repository<RoomBooking>,
+    @InjectRepository(Restaurant)
+    private restaurantRepository: Repository<Restaurant>,
     private dataSource: DataSource,
   ) {
     this.paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || '';
@@ -76,10 +83,94 @@ export class PaymentService {
     }
   }
 
+  // Helper method to check payment access
+  private async checkPaymentAccess(user: User, paymentId: string): Promise<Payment> {
+    const payment = await this.paymentRepository.findOne({
+      where: { id: paymentId },
+      relations: ['order', 'reservation', 'roomBooking']
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Payment with ID ${paymentId} not found`);
+    }
+
+    // Admin has access to all payments
+    if (user.role.name === UserRoleEnum.ADMIN) {
+      return payment;
+    }
+
+    // Customers can only access their own payments
+    if (user.role.name === UserRoleEnum.CUSTOMER && payment.userId !== user.id) {
+      throw new ForbiddenException('You can only access your own payments');
+    }
+
+    // Restaurant owners can only access payments for their restaurant
+    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER) {
+      const hasAccess = await this.checkRestaurantPaymentAccess(user, payment);
+      if (!hasAccess) {
+        throw new ForbiddenException('You can only access payments for your restaurant');
+      }
+    }
+
+    return payment;
+  }
+
+  // Helper method to check restaurant payment access
+  private async checkRestaurantPaymentAccess(user: User, payment: Payment): Promise<boolean> {
+    // Check if payment is for an order from user's restaurant
+    if (payment.orderId) {
+      const order = await this.orderRepository.findOne({
+        where: { id: payment.orderId },
+        relations: ['restaurant', 'restaurant.owner']
+      });
+      if (order && order.restaurant.owner.id === user.id) {
+        return true;
+      }
+    }
+
+    // Check if payment is for a reservation from user's restaurant
+    if (payment.reservationId) {
+      const reservation = await this.reservationRepository.findOne({
+        where: { id: payment.reservationId },
+        relations: ['restaurant', 'restaurant.owner']
+      });
+      if (reservation && reservation.restaurant.owner.id === user.id) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Helper method to get user's restaurant ID
+  private async getUserRestaurantId(user: User): Promise<string> {
+    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER) {
+      const restaurant = await this.restaurantRepository.findOne({
+        where: { owner: { id: user.id } }
+      });
+      
+      if (!restaurant) {
+        throw new NotFoundException('Restaurant not found for this user');
+      }
+      
+      return restaurant.id;
+    }
+
+    throw new ForbiddenException('User does not have restaurant access');
+  }
+
   /**
    * Initialize payment with Paystack
    */
-  async initializePayment(createPaymentDto: CreatePaymentDto) {
+  async initializePayment(createPaymentDto: CreatePaymentDto, user?: User): Promise<any> {
+    // Check permissions for creating payments
+    if (user) {
+      // Customers can only create payments for themselves
+      if (user.role.name === UserRoleEnum.CUSTOMER && String(createPaymentDto.userId) !== String(user.id)) {
+        throw new ForbiddenException('You can only create payments for yourself');
+      }
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -148,11 +239,12 @@ export class PaymentService {
       const paystackResponse = response.data;
 
       // Create payment record in database
+      // Use relation objects (user, order, reservation, roomBooking) instead of non-existent *_Id fields
       const payment = queryRunner.manager.create(Payment, {
-        userId: createPaymentDto.orderId, // This should ideally come from authenticated user context
-        orderId: createPaymentDto.orderId,
-        reservationId: createPaymentDto.reservationId,
-        roomBookingId: createPaymentDto.roomBookingId,
+        user: createPaymentDto.userId ? { id: String(createPaymentDto.userId) } as any : undefined,
+        order: createPaymentDto.orderId ? { id: createPaymentDto.orderId } as any : undefined,
+        reservation: createPaymentDto.reservationId ? { id: createPaymentDto.reservationId } as any : undefined,
+        roomBooking: createPaymentDto.roomBookingId ? { id: createPaymentDto.roomBookingId } as any : undefined,
         amount: createPaymentDto.amount,
         currency: createPaymentDto.currency || 'NGN',
         status: PaymentStatus.PENDING,
@@ -186,7 +278,7 @@ export class PaymentService {
       await queryRunner.rollbackTransaction();
       this.logger.error('Failed to initialize payment', error.stack);
       
-      if (error instanceof HttpException) {
+      if (error instanceof HttpException || error instanceof ForbiddenException) {
         throw error;
       }
       
@@ -202,7 +294,7 @@ export class PaymentService {
   /**
    * Verify payment status with Paystack
    */
-  async verifyPayment(verifyPaymentDto: VerifyPaymentDto) {
+  async verifyPayment(verifyPaymentDto: VerifyPaymentDto, user?: User): Promise<any> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -216,7 +308,12 @@ export class PaymentService {
       });
 
       if (!payment) {
-        throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
+        throw new NotFoundException('Payment not found');
+      }
+
+      // Check access permissions
+      if (user) {
+        await this.checkPaymentAccess(user, payment.id);
       }
 
       // If already processed, return current status
@@ -298,7 +395,7 @@ export class PaymentService {
       await queryRunner.rollbackTransaction();
       this.logger.error('Failed to verify payment', error.stack);
       
-      if (error instanceof HttpException) {
+      if (error instanceof HttpException || error instanceof ForbiddenException) {
         throw error;
       }
       
@@ -495,7 +592,7 @@ export class PaymentService {
         where: { id: createPaymentDto.orderId },
       });
       if (!order) {
-        throw new HttpException('Order not found', HttpStatus.NOT_FOUND);
+        throw new NotFoundException('Order not found');
       }
     }
 
@@ -504,7 +601,7 @@ export class PaymentService {
         where: { id: createPaymentDto.reservationId },
       });
       if (!reservation) {
-        throw new HttpException('Reservation not found', HttpStatus.NOT_FOUND);
+        throw new NotFoundException('Reservation not found');
       }
     }
 
@@ -513,7 +610,7 @@ export class PaymentService {
         where: { id: createPaymentDto.roomBookingId },
       });
       if (!roomBooking) {
-        throw new HttpException('Room booking not found', HttpStatus.NOT_FOUND);
+        throw new NotFoundException('Room booking not found');
       }
     }
   }
@@ -545,46 +642,71 @@ export class PaymentService {
 
   // ========== CRUD Operations ==========
 
-  async findAll() {
+  async findAll(user?: User): Promise<Payment[]> {
+    // Only admin can access all payments
+    if (!user || user.role.name !== UserRoleEnum.ADMIN) {
+      throw new ForbiddenException('Only administrators can access all payments');
+    }
+
     return await this.paymentRepository.find({
       relations: ['invoices'],
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user?: User): Promise<Payment> {
     const payment = await this.paymentRepository.findOne({
       where: { id },
       relations: ['invoices', 'order', 'reservation', 'roomBooking'],
     });
 
     if (!payment) {
-      throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
+      throw new NotFoundException('Payment not found');
+    }
+
+    // Check access permissions
+    if (user) {
+      await this.checkPaymentAccess(user, id);
     }
 
     return payment;
   }
 
-  async update(id: string, updatePaymentDto: UpdatePaymentDto) {
-    const payment = await this.findOne(id);
+  async update(id: string, updatePaymentDto: UpdatePaymentDto, user?: User): Promise<Payment> {
+    // Only admin can update payments
+    if (!user || user.role.name !== UserRoleEnum.ADMIN) {
+      throw new ForbiddenException('Only administrators can update payments');
+    }
+
+    const payment = await this.findOne(id, user);
     Object.assign(payment, updatePaymentDto);
     return await this.paymentRepository.save(payment);
   }
 
-  async remove(id: string) {
-    const payment = await this.findOne(id);
+  async remove(id: string, user?: User): Promise<{ success: boolean; message: string }> {
+    // Only admin can delete payments
+    if (!user || user.role.name !== UserRoleEnum.ADMIN) {
+      throw new ForbiddenException('Only administrators can delete payments');
+    }
+
+    const payment = await this.findOne(id, user);
     await this.paymentRepository.remove(payment);
     return { success: true, message: 'Payment deleted successfully' };
   }
 
-  async getPaymentByReference(reference: string) {
+  async getPaymentByReference(reference: string, user?: User): Promise<Payment> {
     const payment = await this.paymentRepository.findOne({
       where: { reference },
       relations: ['invoices'],
     });
 
     if (!payment) {
-      throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
+      throw new NotFoundException('Payment not found');
+    }
+
+    // Check access permissions
+    if (user) {
+      await this.checkPaymentAccess(user, payment.id);
     }
 
     return payment;
@@ -593,7 +715,12 @@ export class PaymentService {
   /**
    * Get user payment history
    */
-  async getUserPayments(userId: string) {
+  async getUserPayments(userId: string, user?: User): Promise<Payment[]> {
+    // Users can only access their own payment history unless they're admin
+    if (user && user.role.name !== UserRoleEnum.ADMIN && user.id !== userId) {
+      throw new ForbiddenException('You can only access your own payment history');
+    }
+
     return await this.paymentRepository.find({
       where: { userId },
       relations: ['invoices'],
@@ -602,13 +729,72 @@ export class PaymentService {
   }
 
   /**
+   * Get restaurant payments (for restaurant owners)
+   */
+  async getRestaurantPayments(user: User): Promise<Payment[]> {
+    if (user.role.name !== UserRoleEnum.RESTAURANT_OWNER) {
+      throw new ForbiddenException('Only restaurant owners can access restaurant payments');
+    }
+
+    const restaurantId = await this.getUserRestaurantId(user);
+
+    // Get payments for orders from this restaurant
+    const orderPayments = await this.paymentRepository
+      .createQueryBuilder('payment')
+      .leftJoinAndSelect('payment.order', 'order')
+      .leftJoinAndSelect('payment.invoices', 'invoices')
+      .where('order.restaurantId = :restaurantId', { restaurantId })
+      .getMany();
+
+    // Get payments for reservations from this restaurant
+    const reservationPayments = await this.paymentRepository
+      .createQueryBuilder('payment')
+      .leftJoinAndSelect('payment.reservation', 'reservation')
+      .leftJoinAndSelect('payment.invoices', 'invoices')
+      .where('reservation.restaurantId = :restaurantId', { restaurantId })
+      .getMany();
+
+    // Combine and deduplicate payments
+    const allPayments = [...orderPayments, ...reservationPayments];
+    const uniquePayments = allPayments.filter((payment, index, self) =>
+      index === self.findIndex(p => p.id === payment.id)
+    );
+
+    return uniquePayments.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  /**
    * Initiate refund (if needed for restaurant management)
    */
-  async initiateRefund(paymentId: string, reason: string): Promise<{
+  async initiateRefund(paymentId: string, reason: string, user?: User): Promise<{
     success: boolean;
     message: string;
     data?: any;
   }> {
+    // Check permissions for refunds
+    if (user) {
+      if (user.role.name === UserRoleEnum.RESTAURANT_OWNER) {
+        const payment = await this.paymentRepository.findOne({
+          where: { id: paymentId },
+          relations: ['order', 'reservation']
+        });
+
+        if (!payment) {
+          throw new NotFoundException('Payment not found');
+        }
+
+        // Check if payment is for restaurant owner's establishment
+        const hasAccess = await this.checkRestaurantPaymentAccess(user, payment);
+        if (!hasAccess) {
+          throw new ForbiddenException('You can only refund payments for your restaurant');
+        }
+      } else if (user.role.name !== UserRoleEnum.ADMIN) {
+        throw new ForbiddenException('Only administrators and restaurant owners can initiate refunds');
+      }
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -619,14 +805,11 @@ export class PaymentService {
       });
 
       if (!payment) {
-        throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
+        throw new NotFoundException('Payment not found');
       }
 
       if (payment.status !== PaymentStatus.SUCCESS) {
-        throw new HttpException(
-          'Only successful payments can be refunded',
-          HttpStatus.BAD_REQUEST,
-        );
+        throw new BadRequestException('Only successful payments can be refunded');
       }
 
       // Call Paystack refund API
@@ -659,7 +842,7 @@ export class PaymentService {
         };
       }
 
-      throw new HttpException('Refund failed', HttpStatus.BAD_REQUEST);
+      throw new BadRequestException('Refund failed');
     } catch (error) {
       await queryRunner.rollbackTransaction();
       this.logger.error('Refund failed', error.stack);

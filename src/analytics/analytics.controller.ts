@@ -4,9 +4,9 @@ import {
   Post, 
   Body, 
   Query,
+  Param,
   UseGuards,
   Request,
-  Param,
   ParseUUIDPipe
 } from '@nestjs/common';
 import { 
@@ -28,117 +28,102 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('analytics')
-@ApiBearerAuth('JWT-auth')
+@ApiBearerAuth()
 @Controller('analytics')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
-  @Post('activity')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Log user activity' })
+  // ==================== ACTIVITY LOGGING ====================
+
+  @Post('activity-logs')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
+  @ApiOperation({ summary: 'Create activity log entry' })
   @ApiResponse({ status: 201, description: 'Activity logged successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
   @ApiBody({ type: CreateActivityLogDto })
-  logActivity(@Body() createActivityLogDto: CreateActivityLogDto) {
+  async logActivity(@Body() createActivityLogDto: CreateActivityLogDto) {
     return this.analyticsService.logActivity(createActivityLogDto);
   }
 
-  @Get('activity')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('activity-logs')
   @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
-  @ApiOperation({ summary: 'Get activity logs (Admin/Restaurant Owner only)' })
+  @ApiOperation({ summary: 'Get activity logs with filtering' })
   @ApiResponse({ status: 200, description: 'Activity logs retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiQuery({ type: ActivityLogQueryDto })
-  getActivityLogs(@Query() query: ActivityLogQueryDto) {
+  async getActivityLogs(@Query() query: ActivityLogQueryDto) {
     return this.analyticsService.getActivityLogs(query);
   }
 
+  // ==================== BUSINESS ANALYTICS ====================
+
   @Get('dashboard')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
-  @ApiOperation({ summary: 'Get dashboard overview (Admin/Restaurant Owner only)' })
-  @ApiResponse({ status: 200, description: 'Dashboard data retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get dashboard overview analytics' })
+  @ApiResponse({ status: 200, description: 'Dashboard analytics retrieved successfully' })
   @ApiQuery({ type: AnalyticsQueryDto })
-  getDashboardOverview(@Query() query: AnalyticsQueryDto) {
+  async getDashboardOverview(@Query() query: AnalyticsQueryDto) {
     return this.analyticsService.getDashboardOverview(query);
   }
 
   @Get('revenue')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
-  @ApiOperation({ summary: 'Get revenue analytics (Admin/Restaurant Owner only)' })
+  @ApiOperation({ summary: 'Get revenue analytics' })
   @ApiResponse({ status: 200, description: 'Revenue analytics retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiQuery({ type: AnalyticsQueryDto })
-  getRevenueAnalytics(@Query() query: AnalyticsQueryDto) {
+  async getRevenueAnalytics(@Query() query: AnalyticsQueryDto) {
     return this.analyticsService.getRevenueAnalytics(query);
   }
 
   @Get('orders')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
-  @ApiOperation({ summary: 'Get order analytics (Admin/Restaurant Owner only)' })
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get order analytics' })
   @ApiResponse({ status: 200, description: 'Order analytics retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiQuery({ type: AnalyticsQueryDto })
-  getOrderAnalytics(@Query() query: AnalyticsQueryDto) {
+  async getOrderAnalytics(@Query() query: AnalyticsQueryDto) {
     return this.analyticsService.getOrderAnalytics(query);
   }
 
   @Get('customers')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
-  @ApiOperation({ summary: 'Get customer analytics (Admin/Restaurant Owner only)' })
+  @ApiOperation({ summary: 'Get customer analytics' })
   @ApiResponse({ status: 200, description: 'Customer analytics retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiQuery({ type: AnalyticsQueryDto })
-  getCustomerAnalytics(@Query() query: AnalyticsQueryDto) {
+  async getCustomerAnalytics(@Query() query: AnalyticsQueryDto) {
     return this.analyticsService.getCustomerAnalytics(query);
   }
 
   @Get('menu-performance')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
-  @ApiOperation({ summary: 'Get menu performance analytics (Admin/Restaurant Owner only)' })
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get menu performance analytics' })
   @ApiResponse({ status: 200, description: 'Menu performance analytics retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiQuery({ type: AnalyticsQueryDto })
-  getMenuPerformanceAnalytics(@Query() query: AnalyticsQueryDto) {
+  async getMenuPerformanceAnalytics(@Query() query: AnalyticsQueryDto) {
     return this.analyticsService.getMenuPerformanceAnalytics(query);
   }
 
+  // ==================== USER BEHAVIOR ANALYTICS ====================
+
   @Get('user-behavior/:userId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRoleEnum.ADMIN)
-  @ApiOperation({ summary: 'Get user behavior analytics by user ID (Admin only)' })
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Get user behavior analytics' })
   @ApiResponse({ status: 200, description: 'User behavior analytics retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
-  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 403, description: 'Access denied' })
   @ApiParam({ name: 'userId', description: 'User ID', type: String })
   @ApiQuery({ type: AnalyticsQueryDto })
-  getUserBehaviorAnalytics(
+  async getUserBehaviorAnalytics(
     @Param('userId', ParseUUIDPipe) userId: string,
     @Query() query: AnalyticsQueryDto
   ) {
     return this.analyticsService.getUserBehaviorAnalytics(userId, query);
   }
 
-  @Get('user-behavior')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get current user behavior analytics' })
+  @Get('my-behavior')
+  @Roles(UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
+  @ApiOperation({ summary: 'Get my behavior analytics' })
   @ApiResponse({ status: 200, description: 'User behavior analytics retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiQuery({ type: AnalyticsQueryDto })
-  getMyBehaviorAnalytics(@Request() req, @Query() query: AnalyticsQueryDto) {
+  async getMyBehaviorAnalytics(@Query() query: AnalyticsQueryDto, @Request() req) {
     return this.analyticsService.getUserBehaviorAnalytics(req.user.id, query);
   }
 }

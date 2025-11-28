@@ -1,3 +1,4 @@
+// backend\src\menu\menu.controller.ts
 import { 
   Controller, 
   Get, 
@@ -11,7 +12,10 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
   UseInterceptors,
-  ClassSerializerInterceptor
+  ClassSerializerInterceptor,
+  UseGuards,
+  Request,
+  ForbiddenException
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -19,7 +23,8 @@ import {
   ApiResponse, 
   ApiBody, 
   ApiParam, 
-  ApiQuery 
+  ApiQuery,
+  ApiBearerAuth 
 } from '@nestjs/swagger';
 import { MenuService } from './menu.service';
 import { CreateMenuItemDto } from './dto/create-menu-item.dto';
@@ -29,21 +34,30 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { MenuSearchDto } from './dto/menu-search.dto';
 import { CategorySearchDto } from './dto/category-search.dto';
 import { BulkMenuItemsDto } from './dto/bulk-menu-items.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('menu')
+@ApiBearerAuth('JWT-auth')
 @Controller('menu')
 @UseInterceptors(ClassSerializerInterceptor)
+@UseGuards(JwtAuthGuard)
 export class MenuController {
   constructor(private readonly menuService: MenuService) {}
 
-  // Category endpoints
+  // Category endpoints - Restaurant Owner and Admin only
   @Post('categories')
-  @ApiOperation({ summary: 'Create a new menu category' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Create a new menu category (Admin & Restaurant Owner only)' })
   @ApiResponse({ status: 201, description: 'Category created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
   @ApiBody({ type: CreateCategoryDto })
-  createCategory(@Body() createCategoryDto: CreateCategoryDto) {
-    return this.menuService.createCategory(createCategoryDto);
+  createCategory(@Body() createCategoryDto: CreateCategoryDto, @Request() req) {
+    return this.menuService.createCategory(createCategoryDto, req.user);
   }
 
   @Get('categories')
@@ -64,44 +78,57 @@ export class MenuController {
   }
 
   @Patch('categories/:id')
-  @ApiOperation({ summary: 'Update menu category by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Update menu category by ID (Admin & Restaurant Owner only)' })
   @ApiResponse({ status: 200, description: 'Category updated successfully' })
   @ApiResponse({ status: 404, description: 'Category not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
   @ApiParam({ name: 'id', description: 'Category ID', type: String })
   @ApiBody({ type: UpdateCategoryDto })
   updateCategory(
     @Param('id', ParseUUIDPipe) id: string, 
-    @Body() updateCategoryDto: UpdateCategoryDto
+    @Body() updateCategoryDto: UpdateCategoryDto,
+    @Request() req
   ) {
-    return this.menuService.updateCategory(id, updateCategoryDto);
+    return this.menuService.updateCategory(id, updateCategoryDto, req.user);
   }
 
   @Delete('categories/:id')
-  @ApiOperation({ summary: 'Delete menu category by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Delete menu category by ID (Admin & Restaurant Owner only)' })
   @ApiResponse({ status: 200, description: 'Category deleted successfully' })
   @ApiResponse({ status: 404, description: 'Category not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
   @ApiParam({ name: 'id', description: 'Category ID', type: String })
-  removeCategory(@Param('id', ParseUUIDPipe) id: string) {
-    return this.menuService.removeCategory(id);
+  removeCategory(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.menuService.removeCategory(id, req.user);
   }
 
-  // Menu Item endpoints
+  // Menu Item endpoints - Restaurant Owner and Admin only for write operations
   @Post('items')
-  @ApiOperation({ summary: 'Create a new menu item' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Create a new menu item (Admin & Restaurant Owner only)' })
   @ApiResponse({ status: 201, description: 'Menu item created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
   @ApiBody({ type: CreateMenuItemDto })
-  createMenuItem(@Body() createMenuItemDto: CreateMenuItemDto) {
-    return this.menuService.createMenuItem(createMenuItemDto);
+  createMenuItem(@Body() createMenuItemDto: CreateMenuItemDto, @Request() req) {
+    return this.menuService.createMenuItem(createMenuItemDto, req.user);
   }
 
   @Post('items/bulk')
-  @ApiOperation({ summary: 'Create multiple menu items in bulk' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Create multiple menu items in bulk (Admin & Restaurant Owner only)' })
   @ApiResponse({ status: 201, description: 'Menu items created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
   @ApiBody({ type: BulkMenuItemsDto })
-  createBulkMenuItems(@Body() bulkDto: BulkMenuItemsDto) {
-    return this.menuService.createBulkMenuItems(bulkDto);
+  createBulkMenuItems(@Body() bulkDto: BulkMenuItemsDto, @Request() req) {
+    return this.menuService.createBulkMenuItems(bulkDto, req.user);
   }
 
   @Get('items')
@@ -122,37 +149,47 @@ export class MenuController {
   }
 
   @Patch('items/:id')
-  @ApiOperation({ summary: 'Update menu item by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Update menu item by ID (Admin, Restaurant Owner & Staff only)' })
   @ApiResponse({ status: 200, description: 'Menu item updated successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin, Restaurant Owner or Staff access required' })
   @ApiParam({ name: 'id', description: 'Menu item ID', type: String })
   @ApiBody({ type: UpdateMenuItemDto })
   updateMenuItem(
     @Param('id', ParseUUIDPipe) id: string, 
-    @Body() updateMenuItemDto: UpdateMenuItemDto
+    @Body() updateMenuItemDto: UpdateMenuItemDto,
+    @Request() req
   ) {
-    return this.menuService.updateMenuItem(id, updateMenuItemDto);
+    return this.menuService.updateMenuItem(id, updateMenuItemDto, req.user);
   }
 
   @Patch('items/:id/toggle-availability')
-  @ApiOperation({ summary: 'Toggle menu item availability' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Toggle menu item availability (Admin, Restaurant Owner & Staff only)' })
   @ApiResponse({ status: 200, description: 'Menu item availability toggled successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin, Restaurant Owner or Staff access required' })
   @ApiParam({ name: 'id', description: 'Menu item ID', type: String })
-  toggleMenuItemAvailability(@Param('id', ParseUUIDPipe) id: string) {
-    return this.menuService.toggleMenuItemAvailability(id);
+  toggleMenuItemAvailability(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.menuService.toggleMenuItemAvailability(id, req.user);
   }
 
   @Delete('items/:id')
-  @ApiOperation({ summary: 'Delete menu item by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Delete menu item by ID (Admin & Restaurant Owner only)' })
   @ApiResponse({ status: 200, description: 'Menu item deleted successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
   @ApiParam({ name: 'id', description: 'Menu item ID', type: String })
-  removeMenuItem(@Param('id', ParseUUIDPipe) id: string) {
-    return this.menuService.removeMenuItem(id);
+  removeMenuItem(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.menuService.removeMenuItem(id, req.user);
   }
 
-  // Restaurant-specific menu endpoints
+  // Restaurant-specific menu endpoints - Public read access
   @Get('restaurant/:restaurantId')
   @ApiOperation({ summary: 'Get restaurant menu with optional category filter' })
   @ApiResponse({ status: 200, description: 'Restaurant menu retrieved successfully' })
@@ -180,12 +217,15 @@ export class MenuController {
   }
 
   @Get('restaurant/:restaurantId/statistics')
-  @ApiOperation({ summary: 'Get menu statistics for restaurant' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get menu statistics for restaurant (Admin, Restaurant Owner & Staff only)' })
   @ApiResponse({ status: 200, description: 'Menu statistics retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin, Restaurant Owner or Staff access required' })
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getMenuStatistics(@Param('restaurantId', ParseUUIDPipe) restaurantId: string) {
-    return this.menuService.getMenuStatistics(restaurantId);
+  getMenuStatistics(@Param('restaurantId', ParseUUIDPipe) restaurantId: string, @Request() req) {
+    return this.menuService.getMenuStatistics(restaurantId, req.user);
   }
 
   @Get('restaurant/:restaurantId/price-range')
@@ -197,7 +237,7 @@ export class MenuController {
     return this.menuService.getMenuPriceRange(restaurantId);
   }
 
-  // Search and filter endpoints
+  // Search and filter endpoints - Public access
   @Get('search')
   @ApiOperation({ summary: 'Search menu items by query' })
   @ApiResponse({ status: 200, description: 'Search completed successfully' })
@@ -224,7 +264,7 @@ export class MenuController {
     return this.menuService.getMenuItemsByAllergens(restaurantId, allergensArray);
   }
 
-  // Global featured items
+  // Global featured items - Public access
   @Get('featured')
   @ApiOperation({ summary: 'Get globally featured menu items' })
   @ApiResponse({ status: 200, description: 'Featured items retrieved successfully' })
@@ -233,5 +273,28 @@ export class MenuController {
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number
   ) {
     return this.menuService.getFeaturedMenuItems(undefined, limit);
+  }
+
+  // Restaurant Owner specific endpoints
+  @Get('my-restaurant/menu')
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get current user restaurant menu (Restaurant Owner & Staff only)' })
+  @ApiResponse({ status: 200, description: 'Restaurant menu retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Restaurant Owner or Staff access required' })
+  getMyRestaurantMenu(@Request() req) {
+    return this.menuService.getMyRestaurantMenu(req.user);
+  }
+
+  @Get('my-restaurant/statistics')
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get current user restaurant menu statistics (Restaurant Owner & Staff only)' })
+  @ApiResponse({ status: 200, description: 'Menu statistics retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Restaurant Owner or Staff access required' })
+  getMyRestaurantStatistics(@Request() req) {
+    return this.menuService.getMyRestaurantStatistics(req.user);
   }
 }

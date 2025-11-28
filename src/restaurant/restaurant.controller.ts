@@ -12,7 +12,8 @@ import {
   ParseFloatPipe,
   DefaultValuePipe,
   UseInterceptors,
-  ClassSerializerInterceptor
+  ClassSerializerInterceptor,
+  UseGuards
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -20,7 +21,8 @@ import {
   ApiResponse, 
   ApiBody, 
   ApiParam, 
-  ApiQuery 
+  ApiQuery,
+  ApiBearerAuth 
 } from '@nestjs/swagger';
 import { RestaurantService } from './restaurant.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
@@ -30,15 +32,21 @@ import { UpdateRestaurantStaffDto } from './dto/update-restaurant-staff.dto';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
 import { RestaurantSearchDto } from './dto/restaurant-search.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('restaurants')
+@ApiBearerAuth()
 @Controller('restaurants')
 @UseInterceptors(ClassSerializerInterceptor)
+@UseGuards(RolesGuard)
 export class RestaurantController {
   constructor(private readonly restaurantService: RestaurantService) {}
 
   // Restaurant endpoints
   @Post()
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
   @ApiOperation({ summary: 'Create a new restaurant' })
   @ApiResponse({ status: 201, description: 'Restaurant created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
@@ -48,6 +56,7 @@ export class RestaurantController {
   }
 
   @Get()
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
   @ApiOperation({ summary: 'Get all restaurants with filtering' })
   @ApiResponse({ status: 200, description: 'Restaurants retrieved successfully' })
   @ApiQuery({ type: RestaurantSearchDto })
@@ -56,6 +65,7 @@ export class RestaurantController {
   }
 
   @Get('nearby')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
   @ApiOperation({ summary: 'Find restaurants nearby coordinates' })
   @ApiResponse({ status: 200, description: 'Nearby restaurants retrieved successfully' })
   @ApiQuery({ name: 'lat', description: 'Latitude', required: true, type: Number })
@@ -70,6 +80,7 @@ export class RestaurantController {
   }
 
   @Get('city/:cityId/popular')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
   @ApiOperation({ summary: 'Get popular restaurants in city' })
   @ApiResponse({ status: 200, description: 'Popular restaurants retrieved successfully' })
   @ApiResponse({ status: 404, description: 'City not found' })
@@ -83,6 +94,7 @@ export class RestaurantController {
   }
 
   @Get(':id')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
   @ApiOperation({ summary: 'Get restaurant by ID' })
   @ApiResponse({ status: 200, description: 'Restaurant retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
@@ -92,6 +104,7 @@ export class RestaurantController {
   }
 
   @Get(':id/statistics')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
   @ApiOperation({ summary: 'Get restaurant statistics' })
   @ApiResponse({ status: 200, description: 'Restaurant statistics retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
@@ -101,6 +114,7 @@ export class RestaurantController {
   }
 
   @Patch(':id')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
   @ApiOperation({ summary: 'Update restaurant by ID' })
   @ApiResponse({ status: 200, description: 'Restaurant updated successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
@@ -114,6 +128,7 @@ export class RestaurantController {
   }
 
   @Delete(':id')
+  @Roles(UserRoleEnum.ADMIN)
   @ApiOperation({ summary: 'Delete restaurant by ID' })
   @ApiResponse({ status: 200, description: 'Restaurant deleted successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
@@ -124,6 +139,7 @@ export class RestaurantController {
 
   // Staff endpoints
   @Post('staff')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
   @ApiOperation({ summary: 'Create restaurant staff member' })
   @ApiResponse({ status: 201, description: 'Staff member created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
@@ -133,6 +149,7 @@ export class RestaurantController {
   }
 
   @Get('staff/restaurant/:restaurantId')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
   @ApiOperation({ summary: 'Get all staff for restaurant' })
   @ApiResponse({ status: 200, description: 'Staff members retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
@@ -142,6 +159,7 @@ export class RestaurantController {
   }
 
   @Get('staff/:id')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
   @ApiOperation({ summary: 'Get staff member by ID' })
   @ApiResponse({ status: 200, description: 'Staff member retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Staff member not found' })
@@ -151,6 +169,7 @@ export class RestaurantController {
   }
 
   @Patch('staff/:id')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
   @ApiOperation({ summary: 'Update staff member by ID' })
   @ApiResponse({ status: 200, description: 'Staff member updated successfully' })
   @ApiResponse({ status: 404, description: 'Staff member not found' })
@@ -164,6 +183,7 @@ export class RestaurantController {
   }
 
   @Delete('staff/:id')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
   @ApiOperation({ summary: 'Delete staff member by ID' })
   @ApiResponse({ status: 200, description: 'Staff member deleted successfully' })
   @ApiResponse({ status: 404, description: 'Staff member not found' })
@@ -174,6 +194,7 @@ export class RestaurantController {
 
   // Shift endpoints
   @Post('shifts')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
   @ApiOperation({ summary: 'Create a staff shift' })
   @ApiResponse({ status: 201, description: 'Shift created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
@@ -183,6 +204,7 @@ export class RestaurantController {
   }
 
   @Get('shifts/staff/:staffId')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
   @ApiOperation({ summary: 'Get shifts by staff member' })
   @ApiResponse({ status: 200, description: 'Shifts retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Staff member not found' })
@@ -198,6 +220,7 @@ export class RestaurantController {
   }
 
   @Get('shifts/restaurant/:restaurantId')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
   @ApiOperation({ summary: 'Get shifts by restaurant' })
   @ApiResponse({ status: 200, description: 'Shifts retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
@@ -211,6 +234,7 @@ export class RestaurantController {
   }
 
   @Patch('shifts/:id')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
   @ApiOperation({ summary: 'Update shift by ID' })
   @ApiResponse({ status: 200, description: 'Shift updated successfully' })
   @ApiResponse({ status: 404, description: 'Shift not found' })
@@ -224,6 +248,7 @@ export class RestaurantController {
   }
 
   @Delete('shifts/:id')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
   @ApiOperation({ summary: 'Delete shift by ID' })
   @ApiResponse({ status: 200, description: 'Shift deleted successfully' })
   @ApiResponse({ status: 404, description: 'Shift not found' })

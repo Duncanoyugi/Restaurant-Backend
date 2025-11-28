@@ -34,143 +34,301 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('notifications')
-@ApiBearerAuth('JWT-auth')
+@ApiBearerAuth()
 @Controller('notifications')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
+  // ==================== NOTIFICATION MANAGEMENT ====================
+
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRoleEnum.ADMIN)
-  @ApiOperation({ summary: 'Create a new notification (Admin only)' })
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Create a new notification' })
   @ApiResponse({ status: 201, description: 'Notification created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiBody({ type: CreateNotificationDto })
-  create(@Body() createNotificationDto: CreateNotificationDto) {
-    return this.notificationService.create(createNotificationDto);
+  create(@Body() createNotificationDto: CreateNotificationDto, @Request() req) {
+    return this.notificationService.create(createNotificationDto, req.user);
   }
 
   @Post('bulk')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
-  @ApiOperation({ summary: 'Create multiple notifications in bulk (Admin only)' })
+  @ApiOperation({ summary: 'Create multiple notifications in bulk' })
   @ApiResponse({ status: 201, description: 'Notifications created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiBody({ type: BulkNotificationDto })
-  createBulk(@Body() bulkNotificationDto: BulkNotificationDto) {
-    return this.notificationService.createBulk(bulkNotificationDto);
+  createBulk(@Body() bulkNotificationDto: BulkNotificationDto, @Request() req) {
+    return this.notificationService.createBulk(bulkNotificationDto, req.user);
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get user notifications with filtering' })
   @ApiResponse({ status: 200, description: 'Notifications retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiQuery({ type: NotificationQueryDto })
   findAll(@Query() query: NotificationQueryDto, @Request() req) {
-    return this.notificationService.findByUserId(req.user.id, query);
+    return this.notificationService.findByUserId(req.user.id, query, req.user);
   }
 
   @Get('stats')
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get notification statistics for current user' })
   @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   getStats(@Request() req) {
-    return this.notificationService.getNotificationStats(req.user.id);
+    return this.notificationService.getNotificationStats(req.user.id, req.user);
   }
 
   @Get('unread/count')
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get unread notification count for current user' })
   @ApiResponse({ status: 200, description: 'Unread count retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   getUnreadCount(@Request() req) {
-    return this.notificationService.getUnreadCount(req.user.id);
+    return this.notificationService.getUnreadCount(req.user.id, req.user);
   }
 
   @Get('admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiOperation({ summary: 'Get all notifications (Admin only)' })
   @ApiResponse({ status: 200, description: 'All notifications retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiQuery({ type: NotificationQueryDto })
-  findAllAdmin(@Query() query: NotificationQueryDto) {
-    return this.notificationService.findAll(query);
+  findAllAdmin(@Query() query: NotificationQueryDto, @Request() req) {
+    return this.notificationService.findAll(query, req.user);
+  }
+
+  @Get('restaurant')
+  @Roles(UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get restaurant notifications' })
+  @ApiResponse({ status: 200, description: 'Restaurant notifications retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Restaurant access required' })
+  @ApiQuery({ type: NotificationQueryDto })
+  findRestaurantNotifications(@Query() query: NotificationQueryDto, @Request() req) {
+    return this.notificationService.findRestaurantNotifications(query, req.user);
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get notification by ID' })
   @ApiResponse({ status: 200, description: 'Notification retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this notification' })
   @ApiResponse({ status: 404, description: 'Notification not found' })
   @ApiParam({ name: 'id', description: 'Notification ID', type: String })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.notificationService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.notificationService.findOne(id, req.user);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
   @ApiOperation({ summary: 'Update notification by ID' })
   @ApiResponse({ status: 200, description: 'Notification updated successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Notification not found' })
   @ApiParam({ name: 'id', description: 'Notification ID', type: String })
   @ApiBody({ type: UpdateNotificationDto })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateNotificationDto: UpdateNotificationDto) {
-    return this.notificationService.update(id, updateNotificationDto);
+  update(
+    @Param('id', ParseUUIDPipe) id: string, 
+    @Body() updateNotificationDto: UpdateNotificationDto,
+    @Request() req
+  ) {
+    return this.notificationService.update(id, updateNotificationDto, req.user);
   }
 
   @Patch(':id/read')
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Mark notification as read' })
   @ApiResponse({ status: 200, description: 'Notification marked as read' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this notification' })
   @ApiResponse({ status: 404, description: 'Notification not found' })
   @ApiParam({ name: 'id', description: 'Notification ID', type: String })
   @ApiBody({ type: MarkReadDto })
-  markAsRead(@Param('id', ParseUUIDPipe) id: string, @Body() markReadDto: MarkReadDto) {
-    return this.notificationService.markAsRead(id, markReadDto);
+  markAsRead(
+    @Param('id', ParseUUIDPipe) id: string, 
+    @Body() markReadDto: MarkReadDto,
+    @Request() req
+  ) {
+    return this.notificationService.markAsRead(id, markReadDto, req.user);
   }
 
   @Post('mark-all-read')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark all notifications as read for current user' })
   @ApiResponse({ status: 200, description: 'All notifications marked as read' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   markAllAsRead(@Request() req) {
-    return this.notificationService.markAllAsRead(req.user.id);
+    return this.notificationService.markAllAsRead(req.user.id, req.user);
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete notification by ID' })
   @ApiResponse({ status: 204, description: 'Notification deleted successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Cannot delete this notification' })
   @ApiResponse({ status: 404, description: 'Notification not found' })
   @ApiParam({ name: 'id', description: 'Notification ID', type: String })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.notificationService.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.notificationService.remove(id, req.user);
   }
 
-  // System notification endpoints
+  // ==================== SYSTEM NOTIFICATIONS ====================
+
   @Post('system/cleanup')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
-  @ApiOperation({ summary: 'Clean up expired notifications (Admin only)' })
+  @ApiOperation({ summary: 'Clean up expired notifications' })
   @ApiResponse({ status: 200, description: 'Expired notifications cleaned up successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
-  async cleanupExpired() {
-    return this.notificationService.cleanupExpiredNotifications();
+  async cleanupExpired(@Request() req) {
+    return this.notificationService.cleanupExpiredNotifications(req.user);
+  }
+
+  // ==================== RESTAURANT NOTIFICATIONS ====================
+
+  @Post('restaurant/broadcast')
+  @Roles(UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Broadcast notification to restaurant customers' })
+  @ApiResponse({ status: 201, description: 'Broadcast notification sent successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Restaurant Owner access required' })
+  @ApiBody({ type: CreateNotificationDto })
+  async broadcastToRestaurantCustomers(
+    @Body() createNotificationDto: CreateNotificationDto,
+    @Request() req
+  ) {
+    return this.notificationService.broadcastToRestaurantCustomers(createNotificationDto, req.user);
+  }
+
+  // ==================== DRIVER NOTIFICATIONS ====================
+
+  @Get('driver/orders')
+  @Roles(UserRoleEnum.DRIVER)
+  @ApiOperation({ summary: 'Get driver order notifications' })
+  @ApiResponse({ status: 200, description: 'Driver notifications retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Driver access required' })
+  @ApiQuery({ type: NotificationQueryDto })
+  getDriverOrderNotifications(@Query() query: NotificationQueryDto, @Request() req) {
+    return this.notificationService.getDriverOrderNotifications(query, req.user);
+  }
+
+  // ==================== BUSINESS WORKFLOW NOTIFICATIONS ====================
+
+  @Post('order-confirmed')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Send order confirmed notification' })
+  @ApiResponse({ status: 201, description: 'Order notification sent successfully' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', format: 'uuid' },
+        orderData: { type: 'object' }
+      },
+      required: ['userId', 'orderData']
+    }
+  })
+  async notifyOrderConfirmed(
+    @Body() body: { userId: string; orderData: any },
+    @Request() req
+  ) {
+    return this.notificationService.notifyOrderConfirmed(body.userId, body.orderData, req.user);
+  }
+
+  @Post('reservation-confirmed')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Send reservation confirmed notification' })
+  @ApiResponse({ status: 201, description: 'Reservation notification sent successfully' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', format: 'uuid' },
+        reservationData: { type: 'object' }
+      },
+      required: ['userId', 'reservationData']
+    }
+  })
+  async notifyReservationConfirmed(
+    @Body() body: { userId: string; reservationData: any },
+    @Request() req
+  ) {
+    return this.notificationService.notifyReservationConfirmed(body.userId, body.reservationData, req.user);
+  }
+
+  @Post('payment-success')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Send payment success notification' })
+  @ApiResponse({ status: 201, description: 'Payment notification sent successfully' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', format: 'uuid' },
+        paymentData: { type: 'object' }
+      },
+      required: ['userId', 'paymentData']
+    }
+  })
+  async notifyPaymentSuccess(
+    @Body() body: { userId: string; paymentData: any },
+    @Request() req
+  ) {
+    return this.notificationService.notifyPaymentSuccess(body.userId, body.paymentData, req.user);
+  }
+
+  @Post('delivery-assigned')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Send delivery assigned notification' })
+  @ApiResponse({ status: 201, description: 'Delivery notification sent successfully' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', format: 'uuid' },
+        deliveryData: { type: 'object' }
+      },
+      required: ['userId', 'deliveryData']
+    }
+  })
+  async notifyDeliveryAssigned(
+    @Body() body: { userId: string; deliveryData: any },
+    @Request() req
+  ) {
+    return this.notificationService.notifyDeliveryAssigned(body.userId, body.deliveryData, req.user);
+  }
+
+  @Post('low-inventory')
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Send low inventory alert to admins' })
+  @ApiResponse({ status: 201, description: 'Inventory alert sent successfully' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        adminUserIds: { type: 'array', items: { type: 'string', format: 'uuid' } },
+        inventoryData: { type: 'object' }
+      },
+      required: ['adminUserIds', 'inventoryData']
+    }
+  })
+  async notifyLowInventory(
+    @Body() body: { adminUserIds: string[]; inventoryData: any },
+    @Request() req
+  ) {
+    return this.notificationService.notifyLowInventory(body.adminUserIds, body.inventoryData, req.user);
+  }
+
+  @Post('new-review')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Send new review notification' })
+  @ApiResponse({ status: 201, description: 'Review notification sent successfully' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        reviewData: { type: 'object' }
+      },
+      required: ['reviewData']
+    }
+  })
+  async notifyNewReview(
+    @Body() body: { reviewData: any },
+    @Request() req
+  ) {
+    return this.notificationService.notifyNewReview(body.reviewData, req.user);
   }
 }

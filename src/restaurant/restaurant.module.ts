@@ -16,6 +16,6 @@ import { Shift } from './entities/shift.entity';
   ],
   controllers: [RestaurantController],
   providers: [RestaurantService],
-  exports: [RestaurantService, TypeOrmModule],
+  exports: [RestaurantService, TypeOrmModule], // Make sure TypeOrmModule is exported
 })
 export class RestaurantModule {}

@@ -1,3 +1,4 @@
+// backend\src\payment\payment.controller.ts
 import { 
   Controller, 
   Get, 
@@ -12,7 +13,8 @@ import {
   Res,
   UseGuards,
   Request,
-  BadRequestException
+  BadRequestException,
+  ForbiddenException
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -29,9 +31,15 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { PaystackWebhookDto } from './dto/paystack-webhook.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('payments')
+@ApiBearerAuth('JWT-auth')
 @Controller('payments')
+@UseGuards(JwtAuthGuard)
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
@@ -44,9 +52,21 @@ export class PaymentController {
   @ApiOperation({ summary: 'Initialize a new payment' })
   @ApiResponse({ status: 201, description: 'Payment initialized successfully' })
   @ApiResponse({ status: 400, description: 'Bad request - invalid input data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Customer access required' })
   @ApiBody({ type: CreatePaymentDto })
-  async initializePayment(@Body() createPaymentDto: CreatePaymentDto) {
-    return this.paymentService.initializePayment(createPaymentDto);
+  async initializePayment(@Body() createPaymentDto: CreatePaymentDto, @Request() req) {
+    // Customers can only create payments for themselves
+    if (createPaymentDto.userId && createPaymentDto.userId !== req.user.id) {
+      throw new ForbiddenException('You can only create payments for yourself');
+    }
+    
+    // Auto-assign user ID if not provided
+    const paymentData = {
+      ...createPaymentDto,
+      userId: createPaymentDto.userId || req.user.id
+    };
+    
+    return this.paymentService.initializePayment(paymentData, req.user);
   }
 
   /**
@@ -57,10 +77,11 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify payment status' })
   @ApiResponse({ status: 200, description: 'Payment verification completed' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this payment' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiBody({ type: VerifyPaymentDto })
-  async verifyPayment(@Body() verifyPaymentDto: VerifyPaymentDto) {
-    return this.paymentService.verifyPayment(verifyPaymentDto);
+  async verifyPayment(@Body() verifyPaymentDto: VerifyPaymentDto, @Request() req) {
+    return this.paymentService.verifyPayment(verifyPaymentDto, req.user);
   }
 
   /**
@@ -94,10 +115,13 @@ export class PaymentController {
    * GET /payments
    */
   @Get()
-  @ApiOperation({ summary: 'Get all payments' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Get all payments (Admin only)' })
   @ApiResponse({ status: 200, description: 'List of all payments retrieved successfully' })
-  async findAll() {
-    return this.paymentService.findAll();
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  async findAll(@Request() req) {
+    return this.paymentService.findAll(req.user);
   }
 
   /**
@@ -107,10 +131,11 @@ export class PaymentController {
   @Get(':id')
   @ApiOperation({ summary: 'Get payment by ID' })
   @ApiResponse({ status: 200, description: 'Payment retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this payment' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiParam({ name: 'id', description: 'Payment ID' })
-  async findOne(@Param('id') id: string) {
-    return this.paymentService.findOne(id);
+  async findOne(@Param('id') id: string, @Request() req) {
+    return this.paymentService.findOne(id, req.user);
   }
 
   /**
@@ -120,10 +145,11 @@ export class PaymentController {
   @Get('reference/:reference')
   @ApiOperation({ summary: 'Get payment by reference' })
   @ApiResponse({ status: 200, description: 'Payment retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this payment' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiParam({ name: 'reference', description: 'Payment reference' })
-  async findByReference(@Param('reference') reference: string) {
-    return this.paymentService.getPaymentByReference(reference);
+  async findByReference(@Param('reference') reference: string, @Request() req) {
+    return this.paymentService.getPaymentByReference(reference, req.user);
   }
 
   /**
@@ -133,9 +159,14 @@ export class PaymentController {
   @Get('user/:userId')
   @ApiOperation({ summary: 'Get user payment history' })
   @ApiResponse({ status: 200, description: 'User payments retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this user payments' })
   @ApiParam({ name: 'userId', description: 'User ID' })
-  async getUserPayments(@Param('userId') userId: string) {
-    return this.paymentService.getUserPayments(userId);
+  async getUserPayments(@Param('userId') userId: string, @Request() req) {
+    // Users can only access their own payment history unless they're admin
+    if (req.user.role.name !== UserRoleEnum.ADMIN && req.user.id !== userId) {
+      throw new ForbiddenException('You can only access your own payment history');
+    }
+    return this.paymentService.getUserPayments(userId, req.user);
   }
 
   /**
@@ -143,16 +174,20 @@ export class PaymentController {
    * PATCH /payments/:id
    */
   @Patch(':id')
-  @ApiOperation({ summary: 'Update payment' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Update payment (Admin only)' })
   @ApiResponse({ status: 200, description: 'Payment updated successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiParam({ name: 'id', description: 'Payment ID' })
   @ApiBody({ type: UpdatePaymentDto })
   async update(
     @Param('id') id: string, 
-    @Body() updatePaymentDto: UpdatePaymentDto
+    @Body() updatePaymentDto: UpdatePaymentDto,
+    @Request() req
   ) {
-    return this.paymentService.update(id, updatePaymentDto);
+    return this.paymentService.update(id, updatePaymentDto, req.user);
   }
 
   /**
@@ -160,12 +195,15 @@ export class PaymentController {
    * DELETE /payments/:id
    */
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete payment' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Delete payment (Admin only)' })
   @ApiResponse({ status: 200, description: 'Payment deleted successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiParam({ name: 'id', description: 'Payment ID' })
-  async remove(@Param('id') id: string) {
-    return this.paymentService.remove(id);
+  async remove(@Param('id') id: string, @Request() req) {
+    return this.paymentService.remove(id, req.user);
   }
 
   /**
@@ -173,10 +211,13 @@ export class PaymentController {
    * POST /payments/:id/refund
    */
   @Post(':id/refund')
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Initiate refund for a payment' })
+  @ApiOperation({ summary: 'Initiate refund for a payment (Admin & Restaurant Owner only)' })
   @ApiResponse({ status: 200, description: 'Refund initiated successfully' })
   @ApiResponse({ status: 400, description: 'Refund reason is required or payment cannot be refunded' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiParam({ name: 'id', description: 'Payment ID' })
   @ApiBody({ 
@@ -194,7 +235,8 @@ export class PaymentController {
   })
   async initiateRefund(
     @Param('id') id: string,
-    @Body('reason') reason: string
+    @Body('reason') reason: string,
+    @Request() req
   ): Promise<{
     success: boolean;
     message: string;
@@ -203,7 +245,7 @@ export class PaymentController {
     if (!reason) {
       throw new BadRequestException('Refund reason is required');
     }
-    return this.paymentService.initiateRefund(id, reason);
+    return this.paymentService.initiateRefund(id, reason, req.user);
   }
 
   /**
@@ -214,10 +256,11 @@ export class PaymentController {
   @ApiOperation({ summary: 'Download invoice PDF' })
   @ApiResponse({ status: 200, description: 'Invoice retrieved successfully' })
   @ApiResponse({ status: 400, description: 'No invoice found for this payment' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this payment invoice' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiParam({ name: 'id', description: 'Payment ID' })
-  async getInvoice(@Param('id') id: string, @Res() res: Response) {
-    const payment = await this.paymentService.findOne(id);
+  async getInvoice(@Param('id') id: string, @Res() res: Response, @Request() req) {
+    const payment = await this.paymentService.findOne(id, req.user);
     
     if (!payment.invoices || payment.invoices.length === 0) {
       throw new BadRequestException('No invoice found for this payment');
@@ -230,5 +273,30 @@ export class PaymentController {
       data: payment.invoices[0],
       message: 'PDF generation not yet implemented'
     });
+  }
+
+  /**
+   * Get current user payment history
+   * GET /payments/my-payments
+   */
+  @Get('my-payments')
+  @ApiOperation({ summary: 'Get current user payment history' })
+  @ApiResponse({ status: 200, description: 'User payments retrieved successfully' })
+  async getMyPayments(@Request() req) {
+    return this.paymentService.getUserPayments(req.user.id, req.user);
+  }
+
+  /**
+   * Get restaurant payments (for restaurant owners)
+   * GET /payments/restaurant/my-payments
+   */
+  @Get('restaurant/my-payments')
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Get current restaurant payments (Restaurant Owner only)' })
+  @ApiResponse({ status: 200, description: 'Restaurant payments retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Restaurant Owner access required' })
+  async getMyRestaurantPayments(@Request() req) {
+    return this.paymentService.getRestaurantPayments(req.user);
   }
 }

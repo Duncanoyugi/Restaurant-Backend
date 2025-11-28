@@ -1,3 +1,4 @@
+// backend\src\inventory\inventory.controller.ts
 import { 
   Controller, 
   Get, 
@@ -11,7 +12,10 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
   UseInterceptors,
-  ClassSerializerInterceptor
+  ClassSerializerInterceptor,
+  UseGuards,
+  Request,
+  ForbiddenException
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -19,7 +23,8 @@ import {
   ApiResponse, 
   ApiBody, 
   ApiParam, 
-  ApiQuery 
+  ApiQuery,
+  ApiBearerAuth 
 } from '@nestjs/swagger';
 import { InventoryService } from './inventory.service';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
@@ -31,214 +36,317 @@ import { InventorySearchDto } from './dto/inventory-search.dto';
 import { SupplierSearchDto } from './dto/supplier-search.dto';
 import { StockAdjustmentDto } from './dto/stock-adjustment.dto';
 import { StockTransferDto } from './dto/stock-transfer.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('inventory')
+@ApiBearerAuth('JWT-auth')
 @Controller('inventory')
 @UseInterceptors(ClassSerializerInterceptor)
+@UseGuards(JwtAuthGuard)
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   // Supplier endpoints
   @Post('suppliers')
-  @ApiOperation({ summary: 'Create a new supplier' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Create a new supplier (Admin/Restaurant Owner only)' })
   @ApiResponse({ status: 201, description: 'Supplier created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
   @ApiBody({ type: CreateSupplierDto })
-  createSupplier(@Body() createSupplierDto: CreateSupplierDto) {
-    return this.inventoryService.createSupplier(createSupplierDto);
+  createSupplier(@Body() createSupplierDto: CreateSupplierDto, @Request() req) {
+    return this.inventoryService.createSupplier(createSupplierDto, req.user);
   }
 
   @Get('suppliers')
-  @ApiOperation({ summary: 'Get all suppliers with filtering' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get all suppliers with filtering (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Suppliers retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiQuery({ type: SupplierSearchDto })
-  findAllSuppliers(@Query() searchDto: SupplierSearchDto) {
-    return this.inventoryService.findAllSuppliers(searchDto);
+  findAllSuppliers(@Query() searchDto: SupplierSearchDto, @Request() req) {
+    return this.inventoryService.findAllSuppliers(searchDto, req.user);
   }
 
   @Get('suppliers/:id')
-  @ApiOperation({ summary: 'Get supplier by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get supplier by ID (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Supplier retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Supplier not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiParam({ name: 'id', description: 'Supplier ID', type: String })
-  findSupplierById(@Param('id', ParseUUIDPipe) id: string) {
-    return this.inventoryService.findSupplierById(id);
+  findSupplierById(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.inventoryService.findSupplierById(id, req.user);
   }
 
   @Patch('suppliers/:id')
-  @ApiOperation({ summary: 'Update supplier by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Update supplier by ID (Admin/Restaurant Owner only)' })
   @ApiResponse({ status: 200, description: 'Supplier updated successfully' })
   @ApiResponse({ status: 404, description: 'Supplier not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
   @ApiParam({ name: 'id', description: 'Supplier ID', type: String })
   @ApiBody({ type: UpdateSupplierDto })
   updateSupplier(
     @Param('id', ParseUUIDPipe) id: string, 
-    @Body() updateSupplierDto: UpdateSupplierDto
+    @Body() updateSupplierDto: UpdateSupplierDto,
+    @Request() req
   ) {
-    return this.inventoryService.updateSupplier(id, updateSupplierDto);
+    return this.inventoryService.updateSupplier(id, updateSupplierDto, req.user);
   }
 
   @Delete('suppliers/:id')
-  @ApiOperation({ summary: 'Delete supplier by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Delete supplier by ID (Admin/Restaurant Owner only)' })
   @ApiResponse({ status: 200, description: 'Supplier deleted successfully' })
   @ApiResponse({ status: 404, description: 'Supplier not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
   @ApiParam({ name: 'id', description: 'Supplier ID', type: String })
-  removeSupplier(@Param('id', ParseUUIDPipe) id: string) {
-    return this.inventoryService.removeSupplier(id);
+  removeSupplier(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.inventoryService.removeSupplier(id, req.user);
   }
 
   // Inventory Item endpoints
   @Post('items')
-  @ApiOperation({ summary: 'Create a new inventory item' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Create a new inventory item (Admin/Restaurant only)' })
   @ApiResponse({ status: 201, description: 'Inventory item created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiBody({ type: CreateInventoryItemDto })
-  createInventoryItem(@Body() createInventoryItemDto: CreateInventoryItemDto) {
-    return this.inventoryService.createInventoryItem(createInventoryItemDto);
+  createInventoryItem(@Body() createInventoryItemDto: CreateInventoryItemDto, @Request() req) {
+    return this.inventoryService.createInventoryItem(createInventoryItemDto, req.user);
   }
 
   @Get('items')
-  @ApiOperation({ summary: 'Get all inventory items with filtering' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get all inventory items with filtering (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Inventory items retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiQuery({ type: InventorySearchDto })
-  findAllInventoryItems(@Query() searchDto: InventorySearchDto) {
-    return this.inventoryService.findAllInventoryItems(searchDto);
+  findAllInventoryItems(@Query() searchDto: InventorySearchDto, @Request() req) {
+    return this.inventoryService.findAllInventoryItems(searchDto, req.user);
   }
 
   @Get('items/:id')
-  @ApiOperation({ summary: 'Get inventory item by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get inventory item by ID (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Inventory item retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiParam({ name: 'id', description: 'Inventory item ID', type: String })
-  findInventoryItemById(@Param('id', ParseUUIDPipe) id: string) {
-    return this.inventoryService.findInventoryItemById(id);
+  findInventoryItemById(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.inventoryService.findInventoryItemById(id, req.user);
   }
 
   @Patch('items/:id')
-  @ApiOperation({ summary: 'Update inventory item by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Update inventory item by ID (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Inventory item updated successfully' })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiParam({ name: 'id', description: 'Inventory item ID', type: String })
   @ApiBody({ type: UpdateInventoryItemDto })
   updateInventoryItem(
     @Param('id', ParseUUIDPipe) id: string, 
-    @Body() updateInventoryItemDto: UpdateInventoryItemDto
+    @Body() updateInventoryItemDto: UpdateInventoryItemDto,
+    @Request() req
   ) {
-    return this.inventoryService.updateInventoryItem(id, updateInventoryItemDto);
+    return this.inventoryService.updateInventoryItem(id, updateInventoryItemDto, req.user);
   }
 
   @Delete('items/:id')
-  @ApiOperation({ summary: 'Delete inventory item by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Delete inventory item by ID (Admin/Restaurant Owner only)' })
   @ApiResponse({ status: 200, description: 'Inventory item deleted successfully' })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
   @ApiParam({ name: 'id', description: 'Inventory item ID', type: String })
-  removeInventoryItem(@Param('id', ParseUUIDPipe) id: string) {
-    return this.inventoryService.removeInventoryItem(id);
+  removeInventoryItem(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.inventoryService.removeInventoryItem(id, req.user);
   }
 
   // Stock Transaction endpoints
   @Post('transactions')
-  @ApiOperation({ summary: 'Create stock transaction' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Create stock transaction (Admin/Restaurant only)' })
   @ApiResponse({ status: 201, description: 'Stock transaction created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid transaction data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiBody({ type: CreateStockTransactionDto })
-  createStockTransaction(@Body() createTransactionDto: CreateStockTransactionDto) {
-    return this.inventoryService.createStockTransaction(createTransactionDto);
+  createStockTransaction(@Body() createTransactionDto: CreateStockTransactionDto, @Request() req) {
+    return this.inventoryService.createStockTransaction(createTransactionDto, req.user);
   }
 
   @Get('items/:id/transactions')
-  @ApiOperation({ summary: 'Get stock transactions for inventory item' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get stock transactions for inventory item (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Stock transactions retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiParam({ name: 'id', description: 'Inventory item ID', type: String })
   @ApiQuery({ name: 'days', description: 'Number of days to look back', required: false, type: Number })
   getStockTransactions(
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number
+    @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
+    @Request() req
   ) {
-    return this.inventoryService.getStockTransactions(id, days);
+    return this.inventoryService.getStockTransactions(id, days, req.user);
   }
 
   // Stock Management endpoints
   @Post('adjust-stock')
-  @ApiOperation({ summary: 'Adjust stock quantity' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Adjust stock quantity (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Stock adjusted successfully' })
   @ApiResponse({ status: 400, description: 'Invalid adjustment data' })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiBody({ type: StockAdjustmentDto })
-  adjustStock(@Body() adjustmentDto: StockAdjustmentDto) {
-    return this.inventoryService.adjustStock(adjustmentDto);
+  adjustStock(@Body() adjustmentDto: StockAdjustmentDto, @Request() req) {
+    return this.inventoryService.adjustStock(adjustmentDto, req.user);
   }
 
   @Post('transfer-stock')
-  @ApiOperation({ summary: 'Transfer stock between locations' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Transfer stock between locations (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Stock transferred successfully' })
   @ApiResponse({ status: 400, description: 'Invalid transfer data or insufficient stock' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiBody({ type: StockTransferDto })
-  transferStock(@Body() transferDto: StockTransferDto) {
-    return this.inventoryService.transferStock(transferDto);
+  transferStock(@Body() transferDto: StockTransferDto, @Request() req) {
+    return this.inventoryService.transferStock(transferDto, req.user);
   }
 
   // Analytics and Reporting endpoints
   @Get('restaurant/:restaurantId/low-stock')
-  @ApiOperation({ summary: 'Get low stock items for restaurant' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get low stock items for restaurant (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Low stock items retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getLowStockItems(@Param('restaurantId', ParseUUIDPipe) restaurantId: string) {
-    return this.inventoryService.getLowStockItems(restaurantId);
+  getLowStockItems(@Param('restaurantId', ParseUUIDPipe) restaurantId: string, @Request() req) {
+    return this.inventoryService.getLowStockItems(restaurantId, req.user);
   }
 
   @Get('restaurant/:restaurantId/expiring')
-  @ApiOperation({ summary: 'Get expiring items for restaurant' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get expiring items for restaurant (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Expiring items retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
   @ApiQuery({ name: 'days', description: 'Days until expiration', required: false, type: Number })
   getExpiringItems(
     @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
-    @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number
+    @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number,
+    @Request() req
   ) {
-    return this.inventoryService.getExpiringItems(restaurantId, days);
+    return this.inventoryService.getExpiringItems(restaurantId, days, req.user);
   }
 
   @Get('restaurant/:restaurantId/value')
-  @ApiOperation({ summary: 'Get total inventory value for restaurant' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Get total inventory value for restaurant (Admin/Restaurant Owner only)' })
   @ApiResponse({ status: 200, description: 'Inventory value calculated successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getInventoryValue(@Param('restaurantId', ParseUUIDPipe) restaurantId: string) {
-    return this.inventoryService.getInventoryValue(restaurantId);
+  getInventoryValue(@Param('restaurantId', ParseUUIDPipe) restaurantId: string, @Request() req) {
+    return this.inventoryService.getInventoryValue(restaurantId, req.user);
   }
 
   @Get('restaurant/:restaurantId/category-breakdown')
-  @ApiOperation({ summary: 'Get inventory breakdown by category' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get inventory breakdown by category (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Category breakdown retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getCategoryBreakdown(@Param('restaurantId', ParseUUIDPipe) restaurantId: string) {
-    return this.inventoryService.getCategoryBreakdown(restaurantId);
+  getCategoryBreakdown(@Param('restaurantId', ParseUUIDPipe) restaurantId: string, @Request() req) {
+    return this.inventoryService.getCategoryBreakdown(restaurantId, req.user);
   }
 
   @Get('restaurant/:restaurantId/stock-movement')
-  @ApiOperation({ summary: 'Get stock movement report' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Get stock movement report (Admin/Restaurant Owner only)' })
   @ApiResponse({ status: 200, description: 'Stock movement report generated successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
   @ApiQuery({ name: 'days', description: 'Number of days to analyze', required: false, type: Number })
   getStockMovementReport(
     @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
-    @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number
+    @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
+    @Request() req
   ) {
-    return this.inventoryService.getStockMovementReport(restaurantId, days);
+    return this.inventoryService.getStockMovementReport(restaurantId, days, req.user);
   }
 
   @Get('restaurant/:restaurantId/reorder-items')
-  @ApiOperation({ summary: 'Get items needing reorder' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get items needing reorder (Admin/Restaurant only)' })
   @ApiResponse({ status: 200, description: 'Reorder items retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getItemsNeedingReorder(@Param('restaurantId', ParseUUIDPipe) restaurantId: string) {
-    return this.inventoryService.getItemsNeedingReorder(restaurantId);
+  getItemsNeedingReorder(@Param('restaurantId', ParseUUIDPipe) restaurantId: string, @Request() req) {
+    return this.inventoryService.getItemsNeedingReorder(restaurantId, req.user);
+  }
+
+  // Restaurant-specific inventory endpoints
+  @Get('my-restaurant/items')
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get inventory items for current user\'s restaurant' })
+  @ApiResponse({ status: 200, description: 'Inventory items retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Not associated with a restaurant' })
+  @ApiQuery({ type: InventorySearchDto })
+  getMyRestaurantInventoryItems(@Query() searchDto: InventorySearchDto, @Request() req) {
+    return this.inventoryService.getMyRestaurantInventoryItems(searchDto, req.user);
+  }
+
+  @Get('my-restaurant/low-stock')
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get low stock items for current user\'s restaurant' })
+  @ApiResponse({ status: 200, description: 'Low stock items retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Not associated with a restaurant' })
+  getMyRestaurantLowStockItems(@Request() req) {
+    return this.inventoryService.getMyRestaurantLowStockItems(req.user);
+  }
+
+  @Get('my-restaurant/analytics')
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get inventory analytics for current user\'s restaurant' })
+  @ApiResponse({ status: 200, description: 'Inventory analytics retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Not associated with a restaurant' })
+  getMyRestaurantInventoryAnalytics(@Request() req) {
+    return this.inventoryService.getMyRestaurantInventoryAnalytics(req.user);
   }
 }

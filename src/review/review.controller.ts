@@ -34,11 +34,13 @@ import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('reviews')
 @Controller('reviews')
+@UseGuards(RolesGuard)
 export class ReviewController {
   constructor(private readonly reviewService: ReviewService) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  @Roles(UserRoleEnum.CUSTOMER, UserRoleEnum.ADMIN)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Create a new review' })
   @ApiResponse({ status: 201, description: 'Review created successfully' })
@@ -50,6 +52,7 @@ export class ReviewController {
   }
 
   @Get()
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
   @ApiOperation({ summary: 'Get all reviews with filtering' })
   @ApiResponse({ status: 200, description: 'Reviews retrieved successfully' })
   @ApiQuery({ type: ReviewQueryDto })
@@ -58,6 +61,7 @@ export class ReviewController {
   }
 
   @Get('restaurant/:restaurantId')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
   @ApiOperation({ summary: 'Get reviews by restaurant' })
   @ApiResponse({ status: 200, description: 'Restaurant reviews retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
@@ -71,6 +75,7 @@ export class ReviewController {
   }
 
   @Get('menu-item/:menuItemId')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
   @ApiOperation({ summary: 'Get reviews by menu item' })
   @ApiResponse({ status: 200, description: 'Menu item reviews retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
@@ -84,6 +89,7 @@ export class ReviewController {
   }
 
   @Get('stats/restaurant/:restaurantId')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
   @ApiOperation({ summary: 'Get restaurant review statistics' })
   @ApiResponse({ status: 200, description: 'Review statistics retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
@@ -93,6 +99,7 @@ export class ReviewController {
   }
 
   @Get(':id')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
   @ApiOperation({ summary: 'Get review by ID' })
   @ApiResponse({ status: 200, description: 'Review retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Review not found' })
@@ -103,6 +110,7 @@ export class ReviewController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
+  @Roles(UserRoleEnum.CUSTOMER, UserRoleEnum.ADMIN)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Update review by ID' })
   @ApiResponse({ status: 200, description: 'Review updated successfully' })
@@ -121,6 +129,7 @@ export class ReviewController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
+  @Roles(UserRoleEnum.CUSTOMER, UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Delete review by ID' })

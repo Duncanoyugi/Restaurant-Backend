@@ -1,8 +1,11 @@
+// backend\src\inventory\inventory.service.ts
 import { 
   Injectable, 
   NotFoundException, 
   BadRequestException,
-  ConflictException 
+  ConflictException,
+  ForbiddenException,
+  Logger
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Like, FindOptionsWhere, MoreThan, LessThanOrEqual } from 'typeorm';
@@ -18,9 +21,14 @@ import { InventorySearchDto } from './dto/inventory-search.dto';
 import { SupplierSearchDto } from './dto/supplier-search.dto';
 import { StockAdjustmentDto } from './dto/stock-adjustment.dto';
 import { StockTransferDto } from './dto/stock-transfer.dto';
+import { UserRoleEnum } from '../user/entities/user.types';
+import { User } from '../user/entities/user.entity';
+import { Restaurant } from '../restaurant/entities/restaurant.entity';
 
 @Injectable()
 export class InventoryService {
+  private readonly logger = new Logger(InventoryService.name);
+
   constructor(
     @InjectRepository(InventoryItem)
     private inventoryItemRepository: Repository<InventoryItem>,
@@ -28,10 +36,71 @@ export class InventoryService {
     private supplierRepository: Repository<Supplier>,
     @InjectRepository(StockTransaction)
     private stockTransactionRepository: Repository<StockTransaction>,
+    @InjectRepository(Restaurant)
+    private restaurantRepository: Repository<Restaurant>,
   ) {}
 
-  // Supplier CRUD operations
-  async createSupplier(createSupplierDto: CreateSupplierDto): Promise<Supplier> {
+  // ==================== ROLE VALIDATION METHODS ====================
+
+  private async validateRestaurantAccess(user: User, restaurantId?: string): Promise<void> {
+    if (user.role.name === UserRoleEnum.ADMIN) {
+      return; // Admin has access to all restaurants
+    }
+
+    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
+      const userRestaurantId = await this.getUserRestaurantId(user);
+      if (!userRestaurantId) {
+        throw new ForbiddenException('Restaurant association required');
+      }
+      if (restaurantId && userRestaurantId !== restaurantId) {
+        throw new ForbiddenException('Access to this restaurant denied');
+      }
+    } else {
+      throw new ForbiddenException('Insufficient permissions for inventory access');
+    }
+  }
+
+  private async getUserRestaurantId(user: User): Promise<string | null> {
+    // For restaurant owners
+    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER && user.ownedRestaurants?.length > 0) {
+      return user.ownedRestaurants[0].id;
+    }
+
+    // For restaurant staff
+    if (user.role.name === UserRoleEnum.RESTAURANT_STAFF && user.restaurantStaff) {
+      return user.restaurantStaff.restaurantId;
+    }
+
+    return null;
+  }
+
+  private async getCurrentUserRestaurantId(user: User): Promise<string> {
+    const restaurantId = await this.getUserRestaurantId(user);
+    if (!restaurantId) {
+      throw new ForbiddenException('You are not associated with any restaurant');
+    }
+    return restaurantId;
+  }
+
+  private enforceRestaurantFilter(user: User, searchDto: any): any {
+    // Auto-filter by restaurant for restaurant owners and staff
+    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
+      return {
+        ...searchDto,
+        restaurantId: searchDto.restaurantId || this.getUserRestaurantId(user)
+      };
+    }
+    return searchDto;
+  }
+
+  // ==================== SUPPLIER CRUD OPERATIONS ====================
+
+  async createSupplier(createSupplierDto: CreateSupplierDto, user: User): Promise<Supplier> {
+    // Only Admin and Restaurant Owners can create suppliers
+    if (user.role.name !== UserRoleEnum.ADMIN && user.role.name !== UserRoleEnum.RESTAURANT_OWNER) {
+      throw new ForbiddenException('Insufficient permissions to create suppliers');
+    }
+
     // Check if supplier with same email or phone already exists
     const existingSupplier = await this.supplierRepository.findOne({
       where: [
@@ -48,7 +117,14 @@ export class InventoryService {
     return await this.supplierRepository.save(supplier);
   }
 
-  async findAllSuppliers(searchDto: SupplierSearchDto): Promise<Supplier[]> {
+  async findAllSuppliers(searchDto: SupplierSearchDto, user: User): Promise<Supplier[]> {
+    // Only Admin and Restaurant staff can view suppliers
+    if (user.role.name !== UserRoleEnum.ADMIN && 
+        user.role.name !== UserRoleEnum.RESTAURANT_OWNER && 
+        user.role.name !== UserRoleEnum.RESTAURANT_STAFF) {
+      throw new ForbiddenException('Insufficient permissions to view suppliers');
+    }
+
     const { name, contactName, active } = searchDto;
 
     const where: FindOptionsWhere<Supplier> = {};
@@ -72,7 +148,14 @@ export class InventoryService {
     });
   }
 
-  async findSupplierById(id: string): Promise<Supplier> {
+  async findSupplierById(id: string, user: User): Promise<Supplier> {
+    // Only Admin and Restaurant staff can view suppliers
+    if (user.role.name !== UserRoleEnum.ADMIN && 
+        user.role.name !== UserRoleEnum.RESTAURANT_OWNER && 
+        user.role.name !== UserRoleEnum.RESTAURANT_STAFF) {
+      throw new ForbiddenException('Insufficient permissions to view suppliers');
+    }
+
     const supplier = await this.supplierRepository.findOne({
       where: { id },
       relations: ['inventoryItems', 'inventoryItems.restaurant']
@@ -85,8 +168,13 @@ export class InventoryService {
     return supplier;
   }
 
-  async updateSupplier(id: string, updateSupplierDto: UpdateSupplierDto): Promise<Supplier> {
-    const supplier = await this.findSupplierById(id);
+  async updateSupplier(id: string, updateSupplierDto: UpdateSupplierDto, user: User): Promise<Supplier> {
+    // Only Admin and Restaurant Owners can update suppliers
+    if (user.role.name !== UserRoleEnum.ADMIN && user.role.name !== UserRoleEnum.RESTAURANT_OWNER) {
+      throw new ForbiddenException('Insufficient permissions to update suppliers');
+    }
+
+    const supplier = await this.findSupplierById(id, user);
 
     // Check if email or phone is being updated and if they already exist
     if (updateSupplierDto.email && updateSupplierDto.email !== supplier.email) {
@@ -113,8 +201,13 @@ export class InventoryService {
     return await this.supplierRepository.save(supplier);
   }
 
-  async removeSupplier(id: string): Promise<void> {
-    const supplier = await this.findSupplierById(id);
+  async removeSupplier(id: string, user: User): Promise<void> {
+    // Only Admin and Restaurant Owners can delete suppliers
+    if (user.role.name !== UserRoleEnum.ADMIN && user.role.name !== UserRoleEnum.RESTAURANT_OWNER) {
+      throw new ForbiddenException('Insufficient permissions to delete suppliers');
+    }
+
+    const supplier = await this.findSupplierById(id, user);
     
     // Check if supplier has inventory items
     const inventoryItemsCount = await this.inventoryItemRepository.count({
@@ -128,8 +221,12 @@ export class InventoryService {
     await this.supplierRepository.remove(supplier);
   }
 
-  // Inventory Item CRUD operations
-  async createInventoryItem(createInventoryItemDto: CreateInventoryItemDto): Promise<InventoryItem> {
+  // ==================== INVENTORY ITEM CRUD OPERATIONS ====================
+
+  async createInventoryItem(createInventoryItemDto: CreateInventoryItemDto, user: User): Promise<InventoryItem> {
+    // Validate restaurant access
+    await this.validateRestaurantAccess(user, createInventoryItemDto.restaurantId);
+
     // Check if SKU already exists in the same restaurant
     if (createInventoryItemDto.sku) {
       const existingItem = await this.inventoryItemRepository.findOne({
@@ -154,7 +251,8 @@ export class InventoryService {
         quantityChange: savedItem.quantity,
         transactionType: TransactionType.IN,
         reason: 'Initial stock',
-        referenceId: `INIT_${savedItem.id}`
+        referenceId: `INIT_${savedItem.id}`,
+        performedBy: user.id
       });
       await this.stockTransactionRepository.save(initialTransaction);
     }
@@ -162,7 +260,10 @@ export class InventoryService {
     return savedItem;
   }
 
-  async findAllInventoryItems(searchDto: InventorySearchDto): Promise<{ data: InventoryItem[], total: number }> {
+  async findAllInventoryItems(searchDto: InventorySearchDto, user: User): Promise<{ data: InventoryItem[], total: number }> {
+    // Enforce restaurant filter for non-admin users
+    const filteredSearchDto = this.enforceRestaurantFilter(user, searchDto);
+    
     const { 
       restaurantId, 
       supplierId, 
@@ -171,7 +272,7 @@ export class InventoryService {
       lowStock,
       page = 1, 
       limit = 20 
-    } = searchDto;
+    } = filteredSearchDto;
     
     const skip = (page - 1) * limit;
 
@@ -207,7 +308,7 @@ export class InventoryService {
     return { data, total };
   }
 
-  async findInventoryItemById(id: string): Promise<InventoryItem> {
+  async findInventoryItemById(id: string, user: User): Promise<InventoryItem> {
     const inventoryItem = await this.inventoryItemRepository.findOne({
       where: { id },
       relations: [
@@ -221,11 +322,14 @@ export class InventoryService {
       throw new NotFoundException(`Inventory item with ID ${id} not found`);
     }
 
+    // Validate restaurant access
+    await this.validateRestaurantAccess(user, inventoryItem.restaurantId);
+
     return inventoryItem;
   }
 
-  async updateInventoryItem(id: string, updateInventoryItemDto: UpdateInventoryItemDto): Promise<InventoryItem> {
-    const inventoryItem = await this.findInventoryItemById(id);
+  async updateInventoryItem(id: string, updateInventoryItemDto: UpdateInventoryItemDto, user: User): Promise<InventoryItem> {
+    const inventoryItem = await this.findInventoryItemById(id, user);
 
     // Check if SKU is being updated and if it already exists in the same restaurant
     if (updateInventoryItemDto.sku && updateInventoryItemDto.sku !== inventoryItem.sku) {
@@ -245,14 +349,20 @@ export class InventoryService {
     return await this.inventoryItemRepository.save(inventoryItem);
   }
 
-  async removeInventoryItem(id: string): Promise<void> {
-    const inventoryItem = await this.findInventoryItemById(id);
+  async removeInventoryItem(id: string, user: User): Promise<void> {
+    // Only Admin and Restaurant Owners can delete inventory items
+    if (user.role.name !== UserRoleEnum.ADMIN && user.role.name !== UserRoleEnum.RESTAURANT_OWNER) {
+      throw new ForbiddenException('Insufficient permissions to delete inventory items');
+    }
+
+    const inventoryItem = await this.findInventoryItemById(id, user);
     await this.inventoryItemRepository.remove(inventoryItem);
   }
 
-  // Stock Transaction operations
-  async createStockTransaction(createTransactionDto: CreateStockTransactionDto): Promise<{ transaction: StockTransaction, inventoryItem: InventoryItem }> {
-    const inventoryItem = await this.findInventoryItemById(createTransactionDto.inventoryItemId);
+  // ==================== STOCK TRANSACTION OPERATIONS ====================
+
+  async createStockTransaction(createTransactionDto: CreateStockTransactionDto, user: User): Promise<{ transaction: StockTransaction, inventoryItem: InventoryItem }> {
+    const inventoryItem = await this.findInventoryItemById(createTransactionDto.inventoryItemId, user);
 
     // Update inventory quantity based on transaction type
     let newQuantity = inventoryItem.quantity;
@@ -272,14 +382,21 @@ export class InventoryService {
     inventoryItem.quantity = newQuantity;
     await this.inventoryItemRepository.save(inventoryItem);
 
-    // Create stock transaction
-    const transaction = this.stockTransactionRepository.create(createTransactionDto);
+    // Create stock transaction with user info
+    const transactionData = {
+      ...createTransactionDto,
+      performedBy: user.id
+    };
+
+    const transaction = this.stockTransactionRepository.create(transactionData);
     const savedTransaction = await this.stockTransactionRepository.save(transaction);
 
     return { transaction: savedTransaction, inventoryItem };
   }
 
-  async getStockTransactions(inventoryItemId: string, days: number = 30): Promise<StockTransaction[]> {
+  async getStockTransactions(inventoryItemId: string, days: number = 30, user: User): Promise<StockTransaction[]> {
+    const inventoryItem = await this.findInventoryItemById(inventoryItemId, user);
+
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
@@ -293,9 +410,10 @@ export class InventoryService {
     });
   }
 
-  // Stock management operations
-  async adjustStock(adjustmentDto: StockAdjustmentDto): Promise<{ transaction: StockTransaction, inventoryItem: InventoryItem }> {
-    const inventoryItem = await this.findInventoryItemById(adjustmentDto.inventoryItemId);
+  // ==================== STOCK MANAGEMENT OPERATIONS ====================
+
+  async adjustStock(adjustmentDto: StockAdjustmentDto, user: User): Promise<{ transaction: StockTransaction, inventoryItem: InventoryItem }> {
+    const inventoryItem = await this.findInventoryItemById(adjustmentDto.inventoryItemId, user);
 
     const quantityChange = adjustmentDto.newQuantity - inventoryItem.quantity;
 
@@ -304,20 +422,25 @@ export class InventoryService {
       quantityChange: Math.abs(quantityChange),
       transactionType: TransactionType.ADJUSTMENT,
       reason: adjustmentDto.reason,
-      performedBy: adjustmentDto.performedBy
+      performedBy: user.id
     };
 
-    return await this.createStockTransaction(transactionDto);
+    return await this.createStockTransaction(transactionDto, user);
   }
 
-  async transferStock(transferDto: StockTransferDto): Promise<{ 
+  async transferStock(transferDto: StockTransferDto, user: User): Promise<{ 
     fromTransaction: StockTransaction, 
     toTransaction: StockTransaction,
     fromItem: InventoryItem,
     toItem: InventoryItem
   }> {
-    const fromItem = await this.findInventoryItemById(transferDto.fromInventoryItemId);
-    const toItem = await this.findInventoryItemById(transferDto.toInventoryItemId);
+    const fromItem = await this.findInventoryItemById(transferDto.fromInventoryItemId, user);
+    const toItem = await this.findInventoryItemById(transferDto.toInventoryItemId, user);
+
+    // Ensure both items belong to the same restaurant (for restaurant users)
+    if (user.role.name !== UserRoleEnum.ADMIN && fromItem.restaurantId !== toItem.restaurantId) {
+      throw new ForbiddenException('Cannot transfer stock between different restaurants');
+    }
 
     // Check if source has sufficient stock
     if (fromItem.quantity < transferDto.quantity) {
@@ -330,7 +453,7 @@ export class InventoryService {
       quantityChange: transferDto.quantity,
       transactionType: TransactionType.OUT,
       reason: transferDto.reason || `Transfer to ${toItem.name}`,
-      performedBy: transferDto.performedBy,
+      performedBy: user.id,
       referenceId: `TRANSFER_TO_${toItem.id}`
     });
 
@@ -340,7 +463,7 @@ export class InventoryService {
       quantityChange: transferDto.quantity,
       transactionType: TransactionType.IN,
       reason: transferDto.reason || `Transfer from ${fromItem.name}`,
-      performedBy: transferDto.performedBy,
+      performedBy: user.id,
       referenceId: `TRANSFER_FROM_${fromItem.id}`
     });
 
@@ -364,8 +487,11 @@ export class InventoryService {
     };
   }
 
-  // Analytics and reporting
-  async getLowStockItems(restaurantId: string): Promise<InventoryItem[]> {
+  // ==================== ANALYTICS AND REPORTING ====================
+
+  async getLowStockItems(restaurantId: string, user: User): Promise<InventoryItem[]> {
+    await this.validateRestaurantAccess(user, restaurantId);
+
     return await this.inventoryItemRepository
       .createQueryBuilder('item')
       .where('item.restaurantId = :restaurantId', { restaurantId })
@@ -375,7 +501,9 @@ export class InventoryService {
       .getMany();
   }
 
-  async getExpiringItems(restaurantId: string, days: number = 7): Promise<InventoryItem[]> {
+  async getExpiringItems(restaurantId: string, days: number = 7, user: User): Promise<InventoryItem[]> {
+    await this.validateRestaurantAccess(user, restaurantId);
+
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + days);
 
@@ -389,7 +517,9 @@ export class InventoryService {
       .getMany();
   }
 
-  async getInventoryValue(restaurantId: string): Promise<{ totalValue: number, itemCount: number }> {
+  async getInventoryValue(restaurantId: string, user: User): Promise<{ totalValue: number, itemCount: number }> {
+    await this.validateRestaurantAccess(user, restaurantId);
+
     const result = await this.inventoryItemRepository
       .createQueryBuilder('item')
       .select('SUM(item.quantity * item.unitPrice)', 'totalValue')
@@ -403,7 +533,9 @@ export class InventoryService {
     };
   }
 
-  async getCategoryBreakdown(restaurantId: string): Promise<{ category: string, count: number, value: number }[]> {
+  async getCategoryBreakdown(restaurantId: string, user: User): Promise<{ category: string, count: number, value: number }[]> {
+    await this.validateRestaurantAccess(user, restaurantId);
+
     const results = await this.inventoryItemRepository
       .createQueryBuilder('item')
       .select('item.category', 'category')
@@ -421,7 +553,9 @@ export class InventoryService {
     }));
   }
 
-  async getStockMovementReport(restaurantId: string, days: number = 30): Promise<any> {
+  async getStockMovementReport(restaurantId: string, days: number = 30, user: User): Promise<any> {
+    await this.validateRestaurantAccess(user, restaurantId);
+
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
@@ -462,13 +596,52 @@ export class InventoryService {
     return report;
   }
 
-  // Helper methods
-  async isItemLowStock(inventoryItemId: string): Promise<boolean> {
-    const item = await this.findInventoryItemById(inventoryItemId);
+  // ==================== RESTAURANT-SPECIFIC METHODS ====================
+
+  async getMyRestaurantInventoryItems(searchDto: InventorySearchDto, user: User): Promise<{ data: InventoryItem[], total: number }> {
+    const restaurantId = await this.getCurrentUserRestaurantId(user);
+    
+    const searchWithRestaurant = {
+      ...searchDto,
+      restaurantId
+    };
+
+    return this.findAllInventoryItems(searchWithRestaurant, user);
+  }
+
+  async getMyRestaurantLowStockItems(user: User): Promise<InventoryItem[]> {
+    const restaurantId = await this.getCurrentUserRestaurantId(user);
+    return this.getLowStockItems(restaurantId, user);
+  }
+
+  async getMyRestaurantInventoryAnalytics(user: User): Promise<any> {
+    const restaurantId = await this.getCurrentUserRestaurantId(user);
+
+    const [inventoryValue, lowStockItems, expiringItems, categoryBreakdown] = await Promise.all([
+      this.getInventoryValue(restaurantId, user),
+      this.getLowStockItems(restaurantId, user),
+      this.getExpiringItems(restaurantId, 7, user),
+      this.getCategoryBreakdown(restaurantId, user)
+    ]);
+
+    return {
+      restaurantId,
+      inventoryValue,
+      lowStockCount: lowStockItems.length,
+      expiringCount: expiringItems.length,
+      categoryBreakdown,
+      lastUpdated: new Date()
+    };
+  }
+
+  // ==================== HELPER METHODS ====================
+
+  async isItemLowStock(inventoryItemId: string, user: User): Promise<boolean> {
+    const item = await this.findInventoryItemById(inventoryItemId, user);
     return item.quantity <= item.threshold;
   }
 
-  async getItemsNeedingReorder(restaurantId: string): Promise<InventoryItem[]> {
-    return await this.getLowStockItems(restaurantId);
+  async getItemsNeedingReorder(restaurantId: string, user: User): Promise<InventoryItem[]> {
+    return await this.getLowStockItems(restaurantId, user);
   }
 }

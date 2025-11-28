@@ -1,8 +1,10 @@
+// backend\src\order\order.service.ts
 import { 
   Injectable, 
   NotFoundException, 
   BadRequestException,
-  ConflictException 
+  ConflictException,
+  ForbiddenException 
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, FindOptionsWhere, In, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
@@ -18,6 +20,9 @@ import { OrderSearchDto } from './dto/order-search.dto';
 import { KitchenOrderSearchDto } from './dto/kitchen-order.dto';
 import { DeliveryOrderSearchDto } from './dto/delivery-order.dto';
 import { OrderStatsDto } from './dto/order-stats.dto';
+import { User } from '../user/entities/user.entity';
+import { UserRoleEnum } from '../user/entities/user.types';
+import { Restaurant } from '../restaurant/entities/restaurant.entity';
 
 @Injectable()
 export class OrderService {
@@ -30,10 +35,112 @@ export class OrderService {
     private orderStatusRepository: Repository<OrderStatus>,
     @InjectRepository(StatusCatalog)
     private statusCatalogRepository: Repository<StatusCatalog>,
+    @InjectRepository(Restaurant)
+    private restaurantRepository: Repository<Restaurant>,
   ) {}
 
+  // Helper method to check order access
+  private async checkOrderAccess(user: User, orderId: string): Promise<Order> {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: ['restaurant', 'restaurant.owner', 'restaurant.staff', 'restaurant.staff.user']
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+
+    // Admin has access to all orders
+    if (user.role.name === UserRoleEnum.ADMIN) {
+      return order;
+    }
+
+    // Customers can only access their own orders
+    if (user.role.name === UserRoleEnum.CUSTOMER && order.userId !== user.id) {
+      throw new ForbiddenException('You can only access your own orders');
+    }
+
+    // Drivers can only access orders assigned to them
+    if (user.role.name === UserRoleEnum.DRIVER && order.driverId !== user.id) {
+      throw new ForbiddenException('You can only access orders assigned to you');
+    }
+
+    // Restaurant owners and staff can only access orders from their restaurant
+    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
+      const hasAccess = await this.checkRestaurantAccess(user, order.restaurantId);
+      if (!hasAccess) {
+        throw new ForbiddenException('You can only access orders from your restaurant');
+      }
+    }
+
+    return order;
+  }
+
+  // Helper method to check restaurant access
+  private async checkRestaurantAccess(user: User, restaurantId: string): Promise<boolean> {
+    if (user.role.name === UserRoleEnum.ADMIN) {
+      return true;
+    }
+
+    const restaurant = await this.restaurantRepository.findOne({
+      where: { id: restaurantId },
+      relations: ['owner', 'staff', 'staff.user']
+    });
+
+    if (!restaurant) {
+      throw new NotFoundException(`Restaurant with ID ${restaurantId} not found`);
+    }
+
+    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER && restaurant.owner.id === user.id) {
+      return true;
+    }
+
+    if (user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
+      const isStaff = restaurant.staff.some(staff => staff.user.id === user.id);
+      return isStaff;
+    }
+
+    return false;
+  }
+
+  // Helper method to get user's restaurant ID
+  private async getUserRestaurantId(user: User): Promise<string> {
+    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER) {
+      const restaurant = await this.restaurantRepository.findOne({
+        where: { owner: { id: user.id } }
+      });
+      
+      if (!restaurant) {
+        throw new NotFoundException('Restaurant not found for this user');
+      }
+      
+      return restaurant.id;
+    }
+
+    if (user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
+      const staffRecord = await this.restaurantRepository
+        .createQueryBuilder('restaurant')
+        .innerJoin('restaurant.staff', 'staff')
+        .where('staff.userId = :userId', { userId: user.id })
+        .getOne();
+
+      if (!staffRecord) {
+        throw new ForbiddenException('You are not assigned to any restaurant');
+      }
+
+      return staffRecord.id;
+    }
+
+    throw new ForbiddenException('User does not have restaurant access');
+  }
+
   // Order CRUD operations
-  async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
+  async createOrder(createOrderDto: CreateOrderDto, user?: User): Promise<Order> {
+    // Customers can only create orders for themselves
+    if (user && user.role.name === UserRoleEnum.CUSTOMER && createOrderDto.userId !== user.id) {
+      throw new ForbiddenException('You can only create orders for yourself');
+    }
+
     // Validate order type requirements
     this.validateOrderTypeRequirements(createOrderDto);
 
@@ -107,10 +214,10 @@ export class OrderService {
 
     await this.orderStatusRepository.save(initialStatus);
 
-    return await this.findOrderById(savedOrder.id);
+    return await this.findOrderById(savedOrder.id, user);
   }
 
-  async findAllOrders(searchDto: OrderSearchDto): Promise<{ data: Order[], total: number }> {
+  async findAllOrders(searchDto: OrderSearchDto, user?: User): Promise<{ data: Order[], total: number }> {
     const { 
       restaurantId, 
       userId, 
@@ -127,15 +234,29 @@ export class OrderService {
 
     const where: FindOptionsWhere<Order> = {};
 
-    if (restaurantId) {
+    // Apply role-based filtering
+    if (user) {
+      if (user.role.name === UserRoleEnum.CUSTOMER) {
+        where.userId = user.id; // Customers can only see their own orders
+      } else if (user.role.name === UserRoleEnum.DRIVER) {
+        where.driverId = user.id; // Drivers can only see orders assigned to them
+      } else if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
+        const restaurantId = await this.getUserRestaurantId(user);
+        where.restaurantId = restaurantId; // Restaurant users can only see their restaurant's orders
+      }
+      // Admin can see all orders (no additional filtering)
+    }
+
+    // Apply search filters (overriding role-based filters for admin)
+    if (restaurantId && (user?.role.name === UserRoleEnum.ADMIN || await this.checkRestaurantAccess(user!, restaurantId))) {
       where.restaurantId = restaurantId;
     }
 
-    if (userId) {
+    if (userId && (user?.role.name === UserRoleEnum.ADMIN || user?.id === userId)) {
       where.userId = userId;
     }
 
-    if (driverId) {
+    if (driverId && (user?.role.name === UserRoleEnum.ADMIN || user?.id === driverId)) {
       where.driverId = driverId;
     }
 
@@ -175,7 +296,7 @@ export class OrderService {
     return { data, total };
   }
 
-  async findOrderById(id: string): Promise<Order> {
+  async findOrderById(id: string, user?: User): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: [
@@ -198,10 +319,15 @@ export class OrderService {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 
+    // Check access permissions
+    if (user) {
+      await this.checkOrderAccess(user, id);
+    }
+
     return order;
   }
 
-  async findOrderByNumber(orderNumber: string): Promise<Order> {
+  async findOrderByNumber(orderNumber: string, user?: User): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { orderNumber },
       relations: [
@@ -222,11 +348,30 @@ export class OrderService {
       throw new NotFoundException(`Order with number ${orderNumber} not found`);
     }
 
+    // Check access permissions
+    if (user) {
+      await this.checkOrderAccess(user, order.id);
+    }
+
     return order;
   }
 
-  async updateOrder(id: string, updateOrderDto: UpdateOrderDto): Promise<Order> {
-    const order = await this.findOrderById(id);
+  async updateOrder(id: string, updateOrderDto: UpdateOrderDto, user?: User): Promise<Order> {
+    const order = await this.findOrderById(id, user);
+
+    // Check if user can update this order
+    if (user) {
+      if (user.role.name === UserRoleEnum.CUSTOMER && order.userId !== user.id) {
+        throw new ForbiddenException('You can only update your own orders');
+      }
+      
+      if ((user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
+        const hasAccess = await this.checkRestaurantAccess(user, order.restaurantId);
+        if (!hasAccess) {
+          throw new ForbiddenException('You can only update orders from your restaurant');
+        }
+      }
+    }
 
     // Prevent updates for completed or cancelled orders
     const currentStatus = await this.statusCatalogRepository.findOne({
@@ -306,11 +451,25 @@ export class OrderService {
       await this.orderItemRepository.save(orderItems);
     }
 
-    return await this.findOrderById(id);
+    return await this.findOrderById(id, user);
   }
 
-  async removeOrder(id: string): Promise<void> {
-    const order = await this.findOrderById(id);
+  async removeOrder(id: string, user?: User): Promise<void> {
+    const order = await this.findOrderById(id, user);
+
+    // Check if user can delete this order
+    if (user) {
+      if (user.role.name === UserRoleEnum.CUSTOMER && order.userId !== user.id) {
+        throw new ForbiddenException('You can only delete your own orders');
+      }
+      
+      if ((user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
+        const hasAccess = await this.checkRestaurantAccess(user, order.restaurantId);
+        if (!hasAccess) {
+          throw new ForbiddenException('You can only delete orders from your restaurant');
+        }
+      }
+    }
 
     // Only allow deletion for pending orders
     const currentStatus = await this.statusCatalogRepository.findOne({
@@ -325,8 +484,22 @@ export class OrderService {
   }
 
   // Order Status operations
-  async updateOrderStatus(id: string, statusDto: OrderStatusDto): Promise<Order> {
-    const order = await this.findOrderById(id);
+  async updateOrderStatus(id: string, statusDto: OrderStatusDto, user?: User): Promise<Order> {
+    const order = await this.findOrderById(id, user);
+
+    // Check if user can update order status
+    if (user) {
+      if (user.role.name === UserRoleEnum.DRIVER && order.driverId !== user.id) {
+        throw new ForbiddenException('You can only update status for orders assigned to you');
+      }
+      
+      if ((user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
+        const hasAccess = await this.checkRestaurantAccess(user, order.restaurantId);
+        if (!hasAccess) {
+          throw new ForbiddenException('You can only update status for orders from your restaurant');
+        }
+      }
+    }
 
     // Verify the status exists
     const newStatus = await this.statusCatalogRepository.findOne({
@@ -349,7 +522,7 @@ export class OrderService {
       orderId: id,
       statusCatalogId: statusDto.statusId,
       notes: statusDto.notes,
-      updatedBy: statusDto.updatedBy
+      updatedBy: statusDto.updatedBy || user?.id
     });
 
     await this.orderStatusRepository.save(statusHistory);
@@ -357,19 +530,27 @@ export class OrderService {
     // Handle status-specific actions
     await this.handleStatusChangeActions(id, newStatus.name);
 
-    return await this.findOrderById(id);
+    return await this.findOrderById(id, user);
   }
 
-  async getOrderStatusHistory(orderId: string): Promise<OrderStatus[]> {
-    const order = await this.findOrderById(orderId);
+  async getOrderStatusHistory(orderId: string, user?: User): Promise<OrderStatus[]> {
+    const order = await this.findOrderById(orderId, user);
     return order.statusHistory.sort((a, b) => 
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
   }
 
   // Driver operations
-  async assignDriver(orderId: string, assignDriverDto: AssignDriverDto): Promise<Order> {
-    const order = await this.findOrderById(orderId);
+  async assignDriver(orderId: string, assignDriverDto: AssignDriverDto, user?: User): Promise<Order> {
+    const order = await this.findOrderById(orderId, user);
+
+    // Check if user can assign drivers
+    if (user && (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
+      const hasAccess = await this.checkRestaurantAccess(user, order.restaurantId);
+      if (!hasAccess) {
+        throw new ForbiddenException('You can only assign drivers to orders from your restaurant');
+      }
+    }
 
     // Only assign driver for delivery orders
     if (order.orderType !== OrderType.DELIVERY) {
@@ -397,20 +578,31 @@ export class OrderService {
       await this.updateOrderStatus(orderId, {
         statusId: outForDeliveryStatus.id,
         notes: `Driver ${assignDriverDto.driverId} assigned`
-      });
+      }, user);
     }
 
-    return await this.findOrderById(orderId);
+    return await this.findOrderById(orderId, user);
   }
 
   // Specialized queries
-  async findKitchenOrders(searchDto: KitchenOrderSearchDto): Promise<Order[]> {
+  async findKitchenOrders(searchDto: KitchenOrderSearchDto, user?: User): Promise<Order[]> {
     const { restaurantId, statusId, date } = searchDto;
 
     const where: FindOptionsWhere<Order> = {
-      restaurantId,
       orderType: In([OrderType.DINE_IN, OrderType.TAKEAWAY, OrderType.DELIVERY])
     };
+
+    // Apply restaurant filtering based on user role
+    if (user) {
+      if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
+        const userRestaurantId = await this.getUserRestaurantId(user);
+        where.restaurantId = userRestaurantId;
+      } else if (restaurantId && user.role.name === UserRoleEnum.ADMIN) {
+        where.restaurantId = restaurantId;
+      } else {
+        throw new ForbiddenException('You do not have access to kitchen orders');
+      }
+    }
 
     if (statusId) {
       where.statusId = statusId;
@@ -446,19 +638,25 @@ export class OrderService {
     });
   }
 
-  async findDeliveryOrders(searchDto: DeliveryOrderSearchDto): Promise<Order[]> {
+  async findDeliveryOrders(searchDto: DeliveryOrderSearchDto, user?: User): Promise<Order[]> {
     const { restaurantId, driverId, statusId } = searchDto;
 
     const where: FindOptionsWhere<Order> = {
       orderType: OrderType.DELIVERY
     };
 
-    if (restaurantId) {
-      where.restaurantId = restaurantId;
-    }
-
-    if (driverId) {
-      where.driverId = driverId;
+    // Apply role-based filtering
+    if (user) {
+      if (user.role.name === UserRoleEnum.DRIVER) {
+        where.driverId = user.id; // Drivers can only see their own deliveries
+      } else if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
+        const userRestaurantId = await this.getUserRestaurantId(user);
+        where.restaurantId = userRestaurantId; // Restaurant users can only see their restaurant's deliveries
+      } else if (user.role.name === UserRoleEnum.ADMIN) {
+        // Admin can see all, apply provided filters
+        if (restaurantId) where.restaurantId = restaurantId;
+        if (driverId) where.driverId = driverId;
+      }
     }
 
     if (statusId) {
@@ -489,15 +687,23 @@ export class OrderService {
   }
 
   // Analytics and Reporting
-  async getOrderStatistics(statsDto: OrderStatsDto): Promise<any> {
+  async getOrderStatistics(statsDto: OrderStatsDto, user?: User): Promise<any> {
     const { restaurantId, startDate, endDate } = statsDto;
 
     const where: FindOptionsWhere<Order> = {
       createdAt: Between(new Date(startDate), new Date(endDate))
     };
 
-    if (restaurantId) {
-      where.restaurantId = restaurantId;
+    // Apply role-based filtering
+    if (user) {
+      if (user.role.name === UserRoleEnum.RESTAURANT_OWNER) {
+        const userRestaurantId = await this.getUserRestaurantId(user);
+        where.restaurantId = userRestaurantId;
+      } else if (restaurantId && user.role.name === UserRoleEnum.ADMIN) {
+        where.restaurantId = restaurantId;
+      } else if (user.role.name !== UserRoleEnum.ADMIN) {
+        throw new ForbiddenException('You do not have access to order statistics');
+      }
     }
 
     const orders = await this.orderRepository.find({
@@ -541,7 +747,15 @@ export class OrderService {
     };
   }
 
-  async getRestaurantOrdersToday(restaurantId: string): Promise<{ count: number, revenue: number }> {
+  async getRestaurantOrdersToday(restaurantId: string, user?: User): Promise<{ count: number, revenue: number }> {
+    // Check restaurant access
+    if (user && (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
+      const hasAccess = await this.checkRestaurantAccess(user, restaurantId);
+      if (!hasAccess) {
+        throw new ForbiddenException('You can only access orders from your restaurant');
+      }
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -564,7 +778,20 @@ export class OrderService {
     };
   }
 
-  // Helper methods
+  // New method for restaurant users to get their orders
+  async getMyRestaurantOrders(user: User): Promise<{ data: Order[], total: number }> {
+    const restaurantId = await this.getUserRestaurantId(user);
+    
+    const searchDto: OrderSearchDto = {
+      restaurantId,
+      page: 1,
+      limit: 50
+    };
+
+    return this.findAllOrders(searchDto, user);
+  }
+
+  // Existing helper methods (keep the same logic)
   private validateOrderTypeRequirements(orderData: CreateOrderDto | UpdateOrderDto): void {
     if (orderData.orderType === OrderType.DINE_IN && !orderData.tableId) {
       throw new BadRequestException('Table ID is required for dine-in orders');
@@ -676,9 +903,11 @@ export class OrderService {
   }
 
   private async recordDeliveryTime(orderId: string): Promise<void> {
-    const order = await this.findOrderById(orderId);
-    order.actualDeliveryTime = new Date();
-    await this.orderRepository.save(order);
+    const order = await this.orderRepository.findOne({ where: { id: orderId } });
+    if (order) {
+      order.actualDeliveryTime = new Date();
+      await this.orderRepository.save(order);
+    }
   }
 
   private async processOrderCompletion(orderId: string): Promise<void> {

@@ -35,4 +35,5 @@ export class CreatePaymentDto {
   @IsString()
   @IsOptional()
   callbackUrl?: string;
+  userId: boolean;
 }

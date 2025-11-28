@@ -21,4 +21,5 @@ export class CreateCategoryDto {
   @IsBoolean()
   @IsOptional()
   active?: boolean;
+  restaurantId: import("c:/Users/X1 CARBON/OneDrive/Desktop/Teach2give 2/Restaurant/backend/src/user/entities/user.entity").User | undefined;
 }

@@ -37,4 +37,5 @@ export class Category {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+  restaurantId: import("c:/Users/X1 CARBON/OneDrive/Desktop/Teach2give 2/Restaurant/backend/src/user/entities/user.entity").User | undefined;
 }

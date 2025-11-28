@@ -1,3 +1,4 @@
+// backend\src\location\location.controller.ts
 import { 
   Controller, 
   Get, 
@@ -10,7 +11,10 @@ import {
   Query,
   ParseIntPipe,
   ParseFloatPipe,
-  DefaultValuePipe 
+  DefaultValuePipe,
+  UseGuards,
+  Request,
+  ForbiddenException
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -18,7 +22,8 @@ import {
   ApiResponse, 
   ApiBody, 
   ApiParam, 
-  ApiQuery 
+  ApiQuery,
+  ApiBearerAuth 
 } from '@nestjs/swagger';
 import { LocationService } from './location.service';
 import { CreateCountryDto } from './dto/create-country.dto';
@@ -29,17 +34,26 @@ import { CreateCityDto } from './dto/create-city.dto';
 import { UpdateCityDto } from './dto/update-city.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('location')
+@ApiBearerAuth('JWT-auth')
 @Controller('location')
+@UseGuards(JwtAuthGuard)
 export class LocationController {
   constructor(private readonly locationService: LocationService) {}
 
-  // Country endpoints
+  // Country endpoints - Admin only
   @Post('countries')
-  @ApiOperation({ summary: 'Create a new country' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Create a new country (Admin only)' })
   @ApiResponse({ status: 201, description: 'Country created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiBody({ type: CreateCountryDto })
   createCountry(@Body() createCountryDto: CreateCountryDto) {
     return this.locationService.createCountry(createCountryDto);
@@ -71,9 +85,12 @@ export class LocationController {
   }
 
   @Patch('countries/:id')
-  @ApiOperation({ summary: 'Update country by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Update country by ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'Country updated successfully' })
   @ApiResponse({ status: 404, description: 'Country not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiParam({ name: 'id', description: 'Country ID', type: String })
   @ApiBody({ type: UpdateCountryDto })
   updateCountry(
@@ -84,19 +101,25 @@ export class LocationController {
   }
 
   @Delete('countries/:id')
-  @ApiOperation({ summary: 'Delete country by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Delete country by ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'Country deleted successfully' })
   @ApiResponse({ status: 404, description: 'Country not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiParam({ name: 'id', description: 'Country ID', type: String })
   removeCountry(@Param('id', ParseUUIDPipe) id: string) {
     return this.locationService.removeCountry(id);
   }
 
-  // State endpoints
+  // State endpoints - Admin only
   @Post('states')
-  @ApiOperation({ summary: 'Create a new state' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Create a new state (Admin only)' })
   @ApiResponse({ status: 201, description: 'State created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiBody({ type: CreateStateDto })
   createState(@Body() createStateDto: CreateStateDto) {
     return this.locationService.createState(createStateDto);
@@ -128,9 +151,12 @@ export class LocationController {
   }
 
   @Patch('states/:id')
-  @ApiOperation({ summary: 'Update state by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Update state by ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'State updated successfully' })
   @ApiResponse({ status: 404, description: 'State not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiParam({ name: 'id', description: 'State ID', type: String })
   @ApiBody({ type: UpdateStateDto })
   updateState(
@@ -141,19 +167,25 @@ export class LocationController {
   }
 
   @Delete('states/:id')
-  @ApiOperation({ summary: 'Delete state by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Delete state by ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'State deleted successfully' })
   @ApiResponse({ status: 404, description: 'State not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiParam({ name: 'id', description: 'State ID', type: String })
   removeState(@Param('id', ParseUUIDPipe) id: string) {
     return this.locationService.removeState(id);
   }
 
-  // City endpoints
+  // City endpoints - Admin only for write operations
   @Post('cities')
-  @ApiOperation({ summary: 'Create a new city' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Create a new city (Admin only)' })
   @ApiResponse({ status: 201, description: 'City created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiBody({ type: CreateCityDto })
   createCity(@Body() createCityDto: CreateCityDto) {
     return this.locationService.createCity(createCityDto);
@@ -185,9 +217,12 @@ export class LocationController {
   }
 
   @Patch('cities/:id')
-  @ApiOperation({ summary: 'Update city by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Update city by ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'City updated successfully' })
   @ApiResponse({ status: 404, description: 'City not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiParam({ name: 'id', description: 'City ID', type: String })
   @ApiBody({ type: UpdateCityDto })
   updateCity(
@@ -198,27 +233,44 @@ export class LocationController {
   }
 
   @Delete('cities/:id')
-  @ApiOperation({ summary: 'Delete city by ID' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Delete city by ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'City deleted successfully' })
   @ApiResponse({ status: 404, description: 'City not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiParam({ name: 'id', description: 'City ID', type: String })
   removeCity(@Param('id', ParseUUIDPipe) id: string) {
     return this.locationService.removeCity(id);
   }
 
-  // Address endpoints
+  // Address endpoints - User-specific access
   @Post('addresses')
   @ApiOperation({ summary: 'Create a new address' })
   @ApiResponse({ status: 201, description: 'Address created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
   @ApiBody({ type: CreateAddressDto })
-  createAddress(@Body() createAddressDto: CreateAddressDto) {
-    return this.locationService.createAddress(createAddressDto);
+  createAddress(@Body() createAddressDto: CreateAddressDto, @Request() req) {
+    // Users can only create addresses for themselves
+    if (createAddressDto.userId && createAddressDto.userId !== req.user.id) {
+      throw new ForbiddenException('You can only create addresses for yourself');
+    }
+    
+    // Auto-assign user ID if not provided
+    const addressData = {
+      ...createAddressDto,
+      userId: createAddressDto.userId || req.user.id
+    };
+    
+    return this.locationService.createAddress(addressData);
   }
 
   @Get('addresses')
-  @ApiOperation({ summary: 'Get all addresses' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Get all addresses (Admin only)' })
   @ApiResponse({ status: 200, description: 'Addresses retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   findAllAddresses() {
     return this.locationService.findAllAddresses();
   }
@@ -228,8 +280,8 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Address retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Address not found' })
   @ApiParam({ name: 'id', description: 'Address ID', type: String })
-  findOneAddress(@Param('id', ParseUUIDPipe) id: string) {
-    return this.locationService.findOneAddress(id);
+  findOneAddress(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.locationService.findOneAddress(id, req.user);
   }
 
   @Get('addresses/user/:userId')
@@ -237,7 +289,11 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Addresses retrieved successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiParam({ name: 'userId', description: 'User ID', type: String })
-  findAddressesByUser(@Param('userId', ParseUUIDPipe) userId: string) {
+  findAddressesByUser(@Param('userId', ParseUUIDPipe) userId: string, @Request() req) {
+    // Users can only view their own addresses unless they're admin
+    if (req.user.role.name !== UserRoleEnum.ADMIN && req.user.id !== userId) {
+      throw new ForbiddenException('You can only view your own addresses');
+    }
     return this.locationService.findAddressesByUser(userId);
   }
 
@@ -246,7 +302,11 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Default address retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Default address not found' })
   @ApiParam({ name: 'userId', description: 'User ID', type: String })
-  findDefaultAddress(@Param('userId', ParseUUIDPipe) userId: string) {
+  findDefaultAddress(@Param('userId', ParseUUIDPipe) userId: string, @Request() req) {
+    // Users can only view their own default address unless they're admin
+    if (req.user.role.name !== UserRoleEnum.ADMIN && req.user.id !== userId) {
+      throw new ForbiddenException('You can only view your own default address');
+    }
     return this.locationService.findDefaultAddress(userId);
   }
 
@@ -258,9 +318,10 @@ export class LocationController {
   @ApiBody({ type: UpdateAddressDto })
   updateAddress(
     @Param('id', ParseUUIDPipe) id: string, 
-    @Body() updateAddressDto: UpdateAddressDto
+    @Body() updateAddressDto: UpdateAddressDto,
+    @Request() req
   ) {
-    return this.locationService.updateAddress(id, updateAddressDto);
+    return this.locationService.updateAddress(id, updateAddressDto, req.user);
   }
 
   @Delete('addresses/:id')
@@ -268,11 +329,11 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Address deleted successfully' })
   @ApiResponse({ status: 404, description: 'Address not found' })
   @ApiParam({ name: 'id', description: 'Address ID', type: String })
-  removeAddress(@Param('id', ParseUUIDPipe) id: string) {
-    return this.locationService.removeAddress(id);
+  removeAddress(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.locationService.removeAddress(id, req.user);
   }
 
-  // Restaurant-focused location endpoints
+  // Restaurant-focused location endpoints - Public or restaurant-specific access
   @Get('cities/with-restaurants')
   @ApiOperation({ summary: 'Get cities that have restaurants' })
   @ApiResponse({ status: 200, description: 'Cities with restaurants retrieved successfully' })
@@ -298,29 +359,36 @@ export class LocationController {
   @ApiParam({ name: 'addressId', description: 'Address ID', type: String })
   validateDeliveryAddress(
     @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
-    @Param('addressId', ParseUUIDPipe) addressId: string
+    @Param('addressId', ParseUUIDPipe) addressId: string,
+    @Request() req
   ) {
-    return this.locationService.validateDeliveryAddress(restaurantId, addressId);
+    return this.locationService.validateDeliveryAddress(restaurantId, addressId, req.user);
   }
 
   @Get('statistics')
-  @ApiOperation({ summary: 'Get location statistics' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Get location statistics (Admin only)' })
   @ApiResponse({ status: 200, description: 'Location statistics retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   getLocationStatistics() {
     return this.locationService.getLocationStatistics();
   }
 
-  // Bulk operations
+  // Bulk operations - Admin only
   @Post('cities/bulk')
-  @ApiOperation({ summary: 'Create multiple cities in bulk' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN)
+  @ApiOperation({ summary: 'Create multiple cities in bulk (Admin only)' })
   @ApiResponse({ status: 201, description: 'Cities created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiBody({ type: [CreateCityDto] })
   createBulkCities(@Body() createCityDtos: CreateCityDto[]) {
     return this.locationService.createBulkCities(createCityDtos);
   }
 
-  // Kenya-specific endpoints
+  // Kenya-specific endpoints - Public access
   @Get('kenya/cities/major')
   @ApiOperation({ summary: 'Get major Kenyan cities' })
   @ApiResponse({ status: 200, description: 'Major Kenyan cities retrieved successfully' })
@@ -346,5 +414,34 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Nairobi areas retrieved successfully' })
   getNairobiAreas() {
     return this.locationService.getNairobiAreas();
+  }
+
+  // User-specific address endpoints
+  @Get('my/addresses')
+  @ApiOperation({ summary: 'Get current user addresses' })
+  @ApiResponse({ status: 200, description: 'User addresses retrieved successfully' })
+  getMyAddresses(@Request() req) {
+    return this.locationService.findAddressesByUser(req.user.id);
+  }
+
+  @Get('my/default-address')
+  @ApiOperation({ summary: 'Get current user default address' })
+  @ApiResponse({ status: 200, description: 'Default address retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Default address not found' })
+  getMyDefaultAddress(@Request() req) {
+    return this.locationService.findDefaultAddress(req.user.id);
+  }
+
+  @Post('my/addresses')
+  @ApiOperation({ summary: 'Create address for current user' })
+  @ApiResponse({ status: 201, description: 'Address created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiBody({ type: CreateAddressDto })
+  createMyAddress(@Body() createAddressDto: CreateAddressDto, @Request() req) {
+    const addressData = {
+      ...createAddressDto,
+      userId: req.user.id // Always use current user's ID
+    };
+    return this.locationService.createAddress(addressData);
   }
 }

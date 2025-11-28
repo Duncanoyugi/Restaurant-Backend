@@ -74,6 +74,7 @@ export enum EntityType {
   REVIEW = 'review',
   DELIVERY = 'delivery',
   INVENTORY = 'inventory',
+  MENU = "MENU",
 }
 
 @Entity('activity_log')

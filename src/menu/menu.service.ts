@@ -1,11 +1,13 @@
+// backend\src\menu\menu.service.ts
 import { 
   Injectable, 
   NotFoundException, 
   BadRequestException,
-  ConflictException 
+  ConflictException,
+  ForbiddenException 
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, Like, In, FindOptionsWhere } from 'typeorm';
+import { Repository, Between, Like, In, FindOptionsWhere, IsNull } from 'typeorm';
 import { MenuItem } from './entities/menu.entity';
 import { Category } from './entities/category.entity';
 import { CreateMenuItemDto } from './dto/create-menu-item.dto';
@@ -15,6 +17,9 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { MenuSearchDto } from './dto/menu-search.dto';
 import { CategorySearchDto } from './dto/category-search.dto';
 import { BulkMenuItemsDto } from './dto/bulk-menu-items.dto';
+import { User } from '../user/entities/user.entity';
+import { UserRoleEnum } from '../user/entities/user.types';
+import { Restaurant } from '../restaurant/entities/restaurant.entity';
 
 @Injectable()
 export class MenuService {
@@ -23,13 +28,111 @@ export class MenuService {
     private menuItemRepository: Repository<MenuItem>,
     @InjectRepository(Category)
     private categoryRepository: Repository<Category>,
+    @InjectRepository(Restaurant)
+    private restaurantRepository: Repository<Restaurant>,
   ) {}
 
+  // Helper method to check restaurant ownership
+  // Accepts either (user, restaurantId) or (restaurantId, user) to remain compatible with existing call sites.
+  private async checkRestaurantAccess(userOrRestaurantId: User | string, restaurantIdOrUser?: string | User): Promise<void> {
+    let user: User;
+    let restaurantId: string;
+
+    // Normalize arguments: callers may pass (user, restaurantId)
+    // or (restaurantId, user) — handle both to avoid type errors.
+    if (typeof userOrRestaurantId === 'string') {
+      restaurantId = userOrRestaurantId;
+      user = restaurantIdOrUser as User;
+    } else {
+      user = userOrRestaurantId;
+      restaurantId = restaurantIdOrUser as string;
+    }
+
+    if (!user || !restaurantId) {
+      throw new BadRequestException('User and restaurantId are required to check access');
+    }
+
+    if (user.role.name === UserRoleEnum.ADMIN) {
+      return; // Admin has access to all restaurants
+    }
+
+    const restaurant = await this.restaurantRepository.findOne({
+      where: { id: restaurantId },
+      relations: ['owner']
+    });
+
+    if (!restaurant) {
+      throw new NotFoundException(`Restaurant with ID ${restaurantId} not found`);
+    }
+
+    // Check if user is the restaurant owner
+    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER && restaurant.owner.id !== user.id) {
+      throw new ForbiddenException('You can only manage menus for your own restaurant');
+    }
+
+    // Check if user is staff member of this restaurant
+    if (user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
+      const staffRestaurant = await this.restaurantRepository
+        .createQueryBuilder('restaurant')
+        .innerJoin('restaurant.staff', 'staff')
+        .where('restaurant.id = :restaurantId', { restaurantId })
+        .andWhere('staff.userId = :userId', { userId: user.id })
+        .getOne();
+
+      if (!staffRestaurant) {
+        throw new ForbiddenException('You can only manage menus for the restaurant you work at');
+      }
+    }
+  }
+
+  // Helper method to get user's restaurant ID
+  private async getUserRestaurantId(user: User): Promise<string> {
+    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER) {
+      const restaurant = await this.restaurantRepository.findOne({
+        where: { owner: { id: user.id } }
+      });
+      
+      if (!restaurant) {
+        throw new NotFoundException('Restaurant not found for this user');
+      }
+      
+      return restaurant.id;
+    }
+
+    if (user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
+      const staffRecord = await this.restaurantRepository
+        .createQueryBuilder('restaurant')
+        .innerJoin('restaurant.staff', 'staff')
+        .where('staff.userId = :userId', { userId: user.id })
+        .getOne();
+
+      if (!staffRecord) {
+        throw new ForbiddenException('You are not assigned to any restaurant');
+      }
+
+      return staffRecord.id;
+    }
+
+    throw new ForbiddenException('User does not have restaurant access');
+  }
+
   // Category CRUD operations
-  async createCategory(createCategoryDto: CreateCategoryDto): Promise<Category> {
+  async createCategory(createCategoryDto: CreateCategoryDto, user?: User): Promise<Category> {
+    // Check permissions for restaurant-specific categories
+    if (createCategoryDto.restaurantId && user) {
+      await this.checkRestaurantAccess(user, createCategoryDto.restaurantId);
+    }
+
     // Check if category name already exists
+    const categoryWhere: FindOptionsWhere<Category> = { name: createCategoryDto.name } as FindOptionsWhere<Category>;
+    if (createCategoryDto.restaurantId !== undefined && createCategoryDto.restaurantId !== null) {
+      categoryWhere.restaurantId = createCategoryDto.restaurantId as any;
+    } else {
+      // look for global categories where restaurantId IS NULL
+      categoryWhere.restaurantId = IsNull() as any;
+    }
     const existingCategory = await this.categoryRepository.findOne({
-      where: { name: createCategoryDto.name }
+      where: categoryWhere
     });
 
     if (existingCategory) {
@@ -41,7 +144,7 @@ export class MenuService {
   }
 
   async findAllCategories(searchDto: CategorySearchDto): Promise<Category[]> {
-    const { name, active } = searchDto;
+    const { name, active, restaurantId } = searchDto;
 
     const where: FindOptionsWhere<Category> = {};
 
@@ -51,6 +154,11 @@ export class MenuService {
 
     if (active !== undefined) {
       where.active = active;
+    }
+
+    if (restaurantId) {
+      // filter by related restaurant id to satisfy TypeORM typing (avoid assigning string to a relation property)
+      where.restaurantId = { id: restaurantId } as any;
     }
 
     return await this.categoryRepository.find({
@@ -73,13 +181,21 @@ export class MenuService {
     return category;
   }
 
-  async updateCategory(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
+  async updateCategory(id: string, updateCategoryDto: UpdateCategoryDto, user?: User): Promise<Category> {
     const category = await this.findCategoryById(id);
+
+    // Check permissions for restaurant-specific categories
+    if (category.restaurantId && user) {
+      await this.checkRestaurantAccess(user, category.restaurantId);
+    }
 
     // Check if name is being updated and if it already exists
     if (updateCategoryDto.name && updateCategoryDto.name !== category.name) {
       const existingCategory = await this.categoryRepository.findOne({
-        where: { name: updateCategoryDto.name }
+        where: { 
+          name: updateCategoryDto.name,
+          restaurantId: category.restaurantId
+        }
       });
 
       if (existingCategory) {
@@ -91,8 +207,13 @@ export class MenuService {
     return await this.categoryRepository.save(category);
   }
 
-  async removeCategory(id: string): Promise<void> {
+  async removeCategory(id: string, user?: User): Promise<void> {
     const category = await this.findCategoryById(id);
+
+    // Check permissions for restaurant-specific categories
+    if (category.restaurantId && user) {
+      await this.checkRestaurantAccess(user, category.restaurantId);
+    }
     
     // Check if category has menu items
     const menuItemsCount = await this.menuItemRepository.count({
@@ -107,7 +228,12 @@ export class MenuService {
   }
 
   // Menu Item CRUD operations
-  async createMenuItem(createMenuItemDto: CreateMenuItemDto): Promise<MenuItem> {
+  async createMenuItem(createMenuItemDto: CreateMenuItemDto, user?: User): Promise<MenuItem> {
+    // Check restaurant access permissions
+    if (user) {
+      await this.checkRestaurantAccess(user, createMenuItemDto.restaurantId);
+    }
+
     // Check if menu item name already exists in the same restaurant
     const existingMenuItem = await this.menuItemRepository.findOne({
       where: { 
@@ -212,8 +338,13 @@ export class MenuService {
     };
   }
 
-  async updateMenuItem(id: string, updateMenuItemDto: UpdateMenuItemDto): Promise<MenuItem> {
+  async updateMenuItem(id: string, updateMenuItemDto: UpdateMenuItemDto, user?: User): Promise<MenuItem> {
     const menuItem = await this.findMenuItemById(id);
+
+    // Check restaurant access permissions
+    if (user) {
+      await this.checkRestaurantAccess(user, menuItem.restaurantId);
+    }
 
     // Check if name is being updated and if it already exists in the same restaurant
     if (updateMenuItemDto.name && updateMenuItemDto.name !== menuItem.name) {
@@ -246,13 +377,26 @@ export class MenuService {
     };
   }
 
-  async removeMenuItem(id: string): Promise<void> {
+  async removeMenuItem(id: string, user?: User): Promise<void> {
     const menuItem = await this.findMenuItemById(id);
+
+    // Check restaurant access permissions
+    if (user) {
+      await this.checkRestaurantAccess(user, menuItem.restaurantId);
+    }
+
     await this.menuItemRepository.softRemove(menuItem);
   }
 
   // Bulk operations
-  async createBulkMenuItems(bulkDto: BulkMenuItemsDto): Promise<MenuItem[]> {
+  async createBulkMenuItems(bulkDto: BulkMenuItemsDto, user?: User): Promise<MenuItem[]> {
+    // Check restaurant access permissions for all items
+    if (user) {
+      for (const item of bulkDto.items) {
+        await this.checkRestaurantAccess(user, item.restaurantId);
+      }
+    }
+
     const menuItems = bulkDto.items.map(item => 
       this.menuItemRepository.create({
         ...item,
@@ -405,8 +549,14 @@ export class MenuService {
   }
 
   // Toggle menu item availability
-  async toggleMenuItemAvailability(id: string): Promise<MenuItem> {
+  async toggleMenuItemAvailability(id: string, user?: User): Promise<MenuItem> {
     const menuItem = await this.findMenuItemById(id);
+
+    // Check restaurant access permissions
+    if (user) {
+      await this.checkRestaurantAccess(user, menuItem.restaurantId);
+    }
+
     menuItem.available = !menuItem.available;
     
     const updatedItem = await this.menuItemRepository.save(menuItem);
@@ -419,7 +569,12 @@ export class MenuService {
   }
 
   // Get menu statistics
-  async getMenuStatistics(restaurantId: string): Promise<any> {
+  async getMenuStatistics(restaurantId: string, user?: User): Promise<any> {
+    // Check restaurant access permissions
+    if (user) {
+      await this.checkRestaurantAccess(user, restaurantId);
+    }
+
     const [totalItems, availableItems, featuredItems, categoriesCount] = await Promise.all([
       this.menuItemRepository.count({ where: { restaurantId } }),
       this.menuItemRepository.count({ where: { restaurantId, available: true } }),
@@ -441,5 +596,16 @@ export class MenuService {
       categoriesCount: parseInt(categoriesCount.count) || 0,
       priceRange
     };
+  }
+
+  // Restaurant Owner specific methods
+  async getMyRestaurantMenu(user: User): Promise<{ categories: Category[], menuItems: MenuItem[] }> {
+    const restaurantId = await this.getUserRestaurantId(user);
+    return this.getRestaurantMenu(restaurantId);
+  }
+
+  async getMyRestaurantStatistics(user: User): Promise<any> {
+    const restaurantId = await this.getUserRestaurantId(user);
+    return this.getMenuStatistics(restaurantId, user);
   }
 }

@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+// backend\src\location\location.service.ts
+import { 
+  Injectable, 
+  NotFoundException, 
+  BadRequestException,
+  ForbiddenException 
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Country } from './entities/country.entity';
@@ -13,6 +19,8 @@ import { CreateCityDto } from './dto/create-city.dto';
 import { UpdateCityDto } from './dto/update-city.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
+import { User } from '../user/entities/user.entity';
+import { UserRoleEnum } from '../user/entities/user.types';
 
 @Injectable()
 export class LocationService {
@@ -41,7 +49,25 @@ export class LocationService {
     private addressRepository: Repository<Address>,
   ) {}
 
-  // Country methods
+  // Helper method to check user permissions
+  private checkUserPermission(user: User, requiredRole?: UserRoleEnum, resourceUserId?: string): void {
+    // Admin has access to everything
+    if (user.role.name === UserRoleEnum.ADMIN) {
+      return;
+    }
+
+    // Check if specific role is required
+    if (requiredRole && user.role.name !== requiredRole) {
+      throw new ForbiddenException(`Access denied. ${requiredRole} role required.`);
+    }
+
+    // Check if user is accessing their own resource
+    if (resourceUserId && user.id !== resourceUserId) {
+      throw new ForbiddenException('You can only access your own resources');
+    }
+  }
+
+  // Country methods - Admin only for write operations
   async createCountry(createCountryDto: CreateCountryDto): Promise<Country> {
     const country = this.countryRepository.create(createCountryDto);
     return await this.countryRepository.save(country);
@@ -94,7 +120,7 @@ export class LocationService {
     await this.countryRepository.remove(country);
   }
 
-  // State methods
+  // State methods - Admin only for write operations
   async createState(createStateDto: CreateStateDto): Promise<State> {
     const state = this.stateRepository.create(createStateDto);
     return await this.stateRepository.save(state);
@@ -139,7 +165,7 @@ export class LocationService {
     await this.stateRepository.remove(state);
   }
 
-  // City methods
+  // City methods - Admin only for write operations
   async createCity(createCityDto: CreateCityDto): Promise<City> {
     const city = this.cityRepository.create(createCityDto);
     return await this.cityRepository.save(city);
@@ -184,7 +210,7 @@ export class LocationService {
     await this.cityRepository.remove(city);
   }
 
-  // Address methods
+  // Address methods with user-specific access control
   async createAddress(createAddressDto: CreateAddressDto): Promise<Address> {
     // If setting as default and has userId, unset other defaults for this user
     if (createAddressDto.isDefault && createAddressDto.userId) {
@@ -203,7 +229,7 @@ export class LocationService {
     });
   }
 
-  async findOneAddress(id: string): Promise<Address> {
+  async findOneAddress(id: string, user?: User): Promise<Address> {
     const address = await this.addressRepository.findOne({
       where: { id },
       relations: ['city', 'city.state', 'city.state.country', 'user'],
@@ -211,6 +237,11 @@ export class LocationService {
     
     if (!address) {
       throw new NotFoundException(`Address with ID ${id} not found`);
+    }
+
+    // Check if user has permission to access this address
+    if (user) {
+      this.checkUserPermission(user, undefined, address.userId);
     }
     
     return address;
@@ -233,8 +264,13 @@ export class LocationService {
     });
   }
 
-  async updateAddress(id: string, updateAddressDto: UpdateAddressDto): Promise<Address> {
+  async updateAddress(id: string, updateAddressDto: UpdateAddressDto, user?: User): Promise<Address> {
     const address = await this.findOneAddress(id);
+
+    // Check if user has permission to update this address
+    if (user) {
+      this.checkUserPermission(user, undefined, address.userId);
+    }
 
     // If setting as default and has userId, unset other defaults for this user
     if (updateAddressDto.isDefault && !address.isDefault && address.userId) {
@@ -245,8 +281,14 @@ export class LocationService {
     return await this.addressRepository.save(address);
   }
 
-  async removeAddress(id: string): Promise<void> {
+  async removeAddress(id: string, user?: User): Promise<void> {
     const address = await this.findOneAddress(id);
+
+    // Check if user has permission to delete this address
+    if (user) {
+      this.checkUserPermission(user, undefined, address.userId);
+    }
+
     await this.addressRepository.softRemove(address);
   }
 
@@ -257,7 +299,7 @@ export class LocationService {
     );
   }
 
-  // Restaurant location methods
+  // Restaurant location methods - Accessible by all roles
   async findCitiesWithRestaurants(): Promise<City[]> {
     return await this.cityRepository
       .createQueryBuilder('city')
@@ -284,7 +326,7 @@ export class LocationService {
       .getRawMany();
   }
 
-  // Kenya-focused geolocation methods
+  // Kenya-focused geolocation methods - Accessible by all roles
   async findCitiesNearby(cityName: string, radiusKm: number = 50): Promise<any[]> {
     const targetCity = this.getKenyanCityCoordinates(cityName);
     
@@ -316,7 +358,6 @@ export class LocationService {
       name: city.name,
       state: city.state?.name,
       country: city.state?.country?.name,
-      // Fix: Use 'active' instead of 'isActive'
       restaurantCount: city.restaurants?.filter(r => r.active).length || 0,
       distance: this.calculateDistance(
         targetCity.lat,
@@ -327,14 +368,18 @@ export class LocationService {
     }));
   }
 
-  // Kenya-focused delivery validation
-  async validateDeliveryAddress(restaurantId: string, addressId: string): Promise<{ 
+  // Delivery validation - Accessible by Customers, Restaurant Staff, and Restaurant Owners
+  async validateDeliveryAddress(
+    restaurantId: string, 
+    addressId: string, 
+    user?: User
+  ): Promise<{ 
     valid: boolean; 
     distance?: number; 
     estimatedTime?: number;
     cost?: number;
   }> {
-    const address = await this.findOneAddress(addressId);
+    const address = await this.findOneAddress(addressId, user);
     
     // For Kenya, simple validation - check if restaurant is in the same city
     const restaurantCity = await this.cityRepository
@@ -367,12 +412,13 @@ export class LocationService {
     };
   }
 
-  // Bulk location operations for restaurant chains
+  // Bulk location operations - Admin only
   async createBulkCities(citiesData: CreateCityDto[]): Promise<City[]> {
     const cities = citiesData.map(data => this.cityRepository.create(data));
     return await this.cityRepository.save(cities);
   }
 
+  // Location statistics - Admin only
   async getLocationStatistics(): Promise<any> {
     const [totalCountries, totalStates, totalCities, totalAddresses] = await Promise.all([
       this.countryRepository.count(),
@@ -397,7 +443,7 @@ export class LocationService {
     };
   }
 
-  // Kenya-specific methods
+  // Kenya-specific methods - Accessible by all roles
   async getKenyanMajorCities(): Promise<City[]> {
     const majorCityNames = [
       'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret', 
