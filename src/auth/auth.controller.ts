@@ -1,11 +1,13 @@
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  Req, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Req,
   UseGuards,
   HttpCode,
-  HttpStatus 
+  HttpStatus,
+  UnauthorizedException
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -17,6 +19,7 @@ import {
 import type { Request } from 'express';
 
 import { AuthService } from './auth.service';
+import { UserService } from '../user/user.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -33,7 +36,10 @@ interface JwtUserPayload {
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UserService,
+  ) {}
 
   // =========================================================================
   // REGISTER
@@ -115,6 +121,17 @@ export class AuthController {
     return this.authService.resendVerificationEmail(email);
   }
 
+  // Add this to your AuthController
+  @Post('debug-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Debug password issue (Development only)' })
+  async debugPassword(
+    @Body('email') email: string,
+    @Body('password') password: string
+  ) {
+    return this.authService.debugPassword(email, password);
+  }
+
   // =========================================================================
   // LOGIN
   // =========================================================================
@@ -136,6 +153,37 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  // =========================================================================
+  // DEBUG USER DATA
+  // =========================================================================
+  @Post('debug-user')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Debug user data (Development only)' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'User data retrieved' 
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'User not found' 
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'user@example.com'
+        }
+      },
+      required: ['email']
+    }
+  })
+  async debugUser(@Body('email') email: string) {
+    return this.authService.debugUser(email);
   }
 
   // =========================================================================
@@ -236,21 +284,49 @@ export class AuthController {
     return this.authService.refreshTokens(dto.refreshToken);
   }
 
-  // =========================================================================
-  // LOGOUT
-  // =========================================================================
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  @ApiOperation({ summary: 'Get user profile' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({
+    status: 200,
+    description: 'User profile retrieved successfully'
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized'
+  })
+  async getProfile(@Req() req: Request & { user: any }) {
+    const user = await this.usersService.findById(req.user.sub);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      emailVerified: user.emailVerified,
+      status: user.status,
+      profileImage: user.profileImage,
+      phone: user.phone,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'User logout' })
   @ApiBearerAuth('JWT-auth')
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Logged out successfully' 
+  @ApiResponse({
+    status: 200,
+    description: 'Logged out successfully'
   })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Unauthorized' 
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized'
   })
   async logout(
     @Req()

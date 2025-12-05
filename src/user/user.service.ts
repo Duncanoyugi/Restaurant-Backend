@@ -1,3 +1,4 @@
+// backend/src/user/user.service.ts
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -19,7 +20,7 @@ export class UserService {
   ) {}
 
   // -----------------------------------------------------
-  // CREATE USER (REGISTER)
+  // CREATE USER (REGISTER) - FIXED (NO MANUAL HASHING)
   // -----------------------------------------------------
   async create(dto: CreateUserDto, roleName: string = 'Customer'): Promise<User> {
     const existingUser = await this.findByEmail(dto.email);
@@ -32,18 +33,17 @@ export class UserService {
       throw new NotFoundException(`Role "${roleName}" not found`);
     }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
-
+    // ❗ Do NOT hash here — entity hashes automatically via @BeforeInsert()
     const user = this.userRepository.create({
       ...dto,
-      password: hashedPassword,
+      password: dto.password, // keep plain — entity will hash
       role,
       status: UserStatus.PENDING_VERIFICATION,
       emailVerified: false,
       active: true,
     });
 
-    return this.userRepository.save(user);
+    return this.userRepository.save(user); // hash happens in entity
   }
 
   // -----------------------------------------------------
@@ -59,10 +59,12 @@ export class UserService {
   // FIND USER BY ID
   // -----------------------------------------------------
   async findById(id: string): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { id },
-      relations: ['role'],
-    });
+    return this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
+      .where('user.id = :id', { id })
+      .andWhere('user.deleted_at IS NULL')
+      .getOne();
   }
 
   // -----------------------------------------------------
@@ -76,31 +78,16 @@ export class UserService {
   }
 
   // -----------------------------------------------------
-  // FIND USER BY EMAIL WITH PASSWORD (FOR LOGIN)
+  // FIND USER INCLUDING PASSWORD (FOR LOGIN)
   // -----------------------------------------------------
   async findByEmailWithPassword(email: string): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { email },
-
-      // Selecting fields manually, including role fields
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        password: true,
-        emailVerified: true,
-        status: true,
-        roleId: true,
-        role: {
-          id: true,
-          name: true,
-          description: true,
-        },
-      },
-
-      // ❌ FIX: remove relations to prevent JOIN duplication
-      // relations: ['role'],  <-- removed
-    });
+    return this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
+      .addSelect('user.password') // explicitly include password
+      .where('user.email = :email', { email })
+      .andWhere('user.deleted_at IS NULL')
+      .getOne();
   }
 
   // -----------------------------------------------------
@@ -117,6 +104,7 @@ export class UserService {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException(`User with id ${id} not found`);
 
+    // Hash ONLY on update because entity has no @BeforeUpdate()
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
     }
