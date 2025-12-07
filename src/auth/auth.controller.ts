@@ -7,7 +7,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-  UnauthorizedException
+  UnauthorizedException,
+  BadRequestException
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -25,6 +26,7 @@ import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { UserStatus } from '../user/entities/user.entity';
 
 // Strong typing for JWT payload
 interface JwtUserPayload {
@@ -130,6 +132,37 @@ export class AuthController {
     @Body('password') password: string
   ) {
     return this.authService.debugPassword(email, password);
+  }
+
+  @Post('dev-verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email without OTP (Development only)' })
+  async devVerifyEmail(@Body('email') email: string) {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Update user to mark email as verified and set status to active
+    const updatedUser = await this.usersService.update(user.id, {
+      emailVerified: true,
+      status: UserStatus.ACTIVE
+    } as any);
+
+    // Generate tokens
+    const tokens = await this.authService.generateTokens(updatedUser);
+
+    return {
+      message: 'Email verified successfully (DEV MODE)',
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        emailVerified: true,
+      },
+      ...tokens,
+    };
   }
 
   // =========================================================================

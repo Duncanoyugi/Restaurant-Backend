@@ -49,10 +49,64 @@ export class UserService {
   // -----------------------------------------------------
   // FIND ALL USERS
   // -----------------------------------------------------
-  async findAll(): Promise<User[]> {
-    return this.userRepository.find({
-      relations: ['role'],
-    });
+  async findAll(options?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    role?: string;
+    status?: string;
+    emailVerified?: boolean;
+    isOnline?: boolean;
+    isAvailable?: boolean;
+    page?: number;
+    limit?: number;
+  }): Promise<User[]> {
+    const queryBuilder = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
+      .where('user.deleted_at IS NULL');
+
+    if (options?.name) {
+      queryBuilder.andWhere('user.name ILIKE :name', { name: `%${options.name}%` });
+    }
+
+    if (options?.email) {
+      queryBuilder.andWhere('user.email ILIKE :email', { email: `%${options.email}%` });
+    }
+
+    if (options?.phone) {
+      queryBuilder.andWhere('user.phone ILIKE :phone', { phone: `%${options.phone}%` });
+    }
+
+    if (options?.role) {
+      queryBuilder.andWhere('role.name = :role', { role: options.role });
+    }
+
+    if (options?.status) {
+      queryBuilder.andWhere('user.status = :status', { status: options.status });
+    }
+
+    if (options?.emailVerified !== undefined) {
+      queryBuilder.andWhere('user.emailVerified = :emailVerified', { emailVerified: options.emailVerified });
+    }
+
+    if (options?.isOnline !== undefined) {
+      queryBuilder.andWhere('user.isOnline = :isOnline', { isOnline: options.isOnline });
+    }
+
+    if (options?.isAvailable !== undefined) {
+      queryBuilder.andWhere('user.isAvailable = :isAvailable', { isAvailable: options.isAvailable });
+    }
+
+    if (options?.page && options?.limit) {
+      queryBuilder
+        .skip((options.page - 1) * options.limit)
+        .take(options.limit);
+    } else if (options?.limit) {
+      queryBuilder.take(options.limit);
+    }
+
+    return queryBuilder.getMany();
   }
 
   // -----------------------------------------------------

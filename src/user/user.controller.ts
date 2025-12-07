@@ -1,28 +1,35 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
   Delete,
+  Query,
   UseInterceptors,
-  ClassSerializerInterceptor 
+  ClassSerializerInterceptor,
+  UseGuards
 } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiBody, 
-  ApiParam 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam
 } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UserRoleEnum } from './entities/user.types';
 
 @ApiTags('users')
 @Controller('users')
 @UseInterceptors(ClassSerializerInterceptor)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -37,10 +44,33 @@ export class UserController {
   }
 
   @Get()
+  @Roles(UserRoleEnum.ADMIN)
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
-  findAll() {
-    return this.userService.findAll();
+  findAll(
+    @Query('name') name?: string,
+    @Query('email') email?: string,
+    @Query('phone') phone?: string,
+    @Query('role') role?: string,
+    @Query('status') status?: string,
+    @Query('emailVerified') emailVerified?: string,
+    @Query('isOnline') isOnline?: string,
+    @Query('isAvailable') isAvailable?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.userService.findAll({
+      name,
+      email,
+      phone,
+      role,
+      status,
+      emailVerified: emailVerified === 'true' ? true : emailVerified === 'false' ? false : undefined,
+      isOnline: isOnline === 'true' ? true : isOnline === 'false' ? false : undefined,
+      isAvailable: isAvailable === 'true' ? true : isAvailable === 'false' ? false : undefined,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
   }
 
   @Get(':id')
@@ -53,6 +83,7 @@ export class UserController {
   }
 
   @Patch(':id')
+  @Roles(UserRoleEnum.ADMIN)
   @ApiOperation({ summary: 'Update user by ID' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
@@ -63,6 +94,7 @@ export class UserController {
   }
 
   @Delete(':id')
+  @Roles(UserRoleEnum.ADMIN)
   @ApiOperation({ summary: 'Delete user by ID' })
   @ApiResponse({ status: 200, description: 'User deleted successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
