@@ -5,6 +5,8 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { MenuItem } from './menu.entity';
 
@@ -37,5 +39,10 @@ export class Category {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-  restaurantId: import("c:/Users/X1 CARBON/OneDrive/Desktop/Teach2give 2/Restaurant/backend/src/user/entities/user.entity").User | undefined;
+  @Column({ name: 'restaurant_id', nullable: true })
+  restaurantId: string;
+
+  @ManyToOne('User', { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'restaurant_id' })
+  restaurant: import("../../user/entities/user.entity").User;
 }

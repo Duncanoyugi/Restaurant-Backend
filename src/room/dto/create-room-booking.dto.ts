@@ -1,13 +1,15 @@
-import { 
-  IsString, 
-  IsNotEmpty, 
-  IsUUID, 
-  IsNumber, 
-  IsDateString, 
+import {
+  IsString,
+  IsNotEmpty,
+  IsUUID,
+  IsNumber,
+  IsDateString,
   IsOptional,
   Min,
   Max,
-  IsEnum
+  IsEnum,
+  IsEmail,
+  IsIn
 } from 'class-validator';
 import { RoomBookingStatus } from '../entities/room-booking.entity';
 
@@ -46,4 +48,21 @@ export class CreateRoomBookingDto {
   @IsString()
   @IsOptional()
   specialRequests?: string;
+
+  // Payment integration fields
+  @IsOptional()
+  @IsIn(['card', 'bank', 'ussd', 'mobile_money', 'bank_transfer', 'mpesa', 'airtel', 'orange', 'vodafone'])
+  paymentMethod?: string;
+
+  @IsOptional()
+  @IsEmail()
+  customerEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  customerName?: string;
+
+  @IsOptional()
+  @IsString()
+  callbackUrl?: string;
 }

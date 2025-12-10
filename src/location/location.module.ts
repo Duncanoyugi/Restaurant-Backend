@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LocationService } from './location.service';
 import { LocationController } from './location.controller';
 import { LocationHelperService } from './location-helper.service';
+import { LocationSeeder } from './location.seed';
 import { Country } from './entities/country.entity';
 import { State } from './entities/state.entity';
 import { City } from './entities/city.entity';
@@ -18,7 +19,7 @@ import { Address } from './entities/address.entity';
     ])
   ],
   controllers: [LocationController],
-  providers: [LocationService, LocationHelperService],
+  providers: [LocationService, LocationHelperService, LocationSeeder],
   exports: [LocationService, LocationHelperService, TypeOrmModule],
 })
 export class LocationModule {}

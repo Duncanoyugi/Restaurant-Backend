@@ -1,11 +1,11 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
   Query,
   ParseUUIDPipe,
   ParseIntPipe,
@@ -15,14 +15,14 @@ import {
   ClassSerializerInterceptor,
   UseGuards
 } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiBody, 
-  ApiParam, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
   ApiQuery,
-  ApiBearerAuth 
+  ApiBearerAuth
 } from '@nestjs/swagger';
 import { RestaurantService } from './restaurant.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
@@ -33,6 +33,7 @@ import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
 import { RestaurantSearchDto } from './dto/restaurant-search.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { UserRoleEnum } from '../user/entities/user.types';
 
@@ -42,7 +43,7 @@ import { UserRoleEnum } from '../user/entities/user.types';
 @UseInterceptors(ClassSerializerInterceptor)
 @UseGuards(RolesGuard)
 export class RestaurantController {
-  constructor(private readonly restaurantService: RestaurantService) {}
+  constructor(private readonly restaurantService: RestaurantService) { }
 
   // Restaurant endpoints
   @Post()
@@ -56,12 +57,21 @@ export class RestaurantController {
   }
 
   @Get()
-  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
-  @ApiOperation({ summary: 'Get all restaurants with filtering' })
+  @Public()
+  @ApiOperation({ summary: 'Get all restaurants with filtering (Public endpoint)' })
   @ApiResponse({ status: 200, description: 'Restaurants retrieved successfully' })
   @ApiQuery({ type: RestaurantSearchDto })
   findAll(@Query() searchDto: RestaurantSearchDto) {
     return this.restaurantService.findAll(searchDto);
+  }
+
+  @Get('default')
+  @Public()
+  @ApiOperation({ summary: 'Get the default restaurant (Public endpoint)' })
+  @ApiResponse({ status: 200, description: 'Default restaurant retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'No active restaurant found' })
+  getDefaultRestaurant() {
+    return this.restaurantService.getDefaultRestaurant();
   }
 
   @Get('nearby')
@@ -121,7 +131,7 @@ export class RestaurantController {
   @ApiParam({ name: 'id', description: 'Restaurant ID', type: String })
   @ApiBody({ type: UpdateRestaurantDto })
   update(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateRestaurantDto: UpdateRestaurantDto
   ) {
     return this.restaurantService.update(id, updateRestaurantDto);
@@ -176,7 +186,7 @@ export class RestaurantController {
   @ApiParam({ name: 'id', description: 'Staff ID', type: String })
   @ApiBody({ type: UpdateRestaurantStaffDto })
   updateStaff(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateStaffDto: UpdateRestaurantStaffDto
   ) {
     return this.restaurantService.updateStaff(id, updateStaffDto);
@@ -241,7 +251,7 @@ export class RestaurantController {
   @ApiParam({ name: 'id', description: 'Shift ID', type: String })
   @ApiBody({ type: UpdateShiftDto })
   updateShift(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateShiftDto: UpdateShiftDto
   ) {
     return this.restaurantService.updateShift(id, updateShiftDto);

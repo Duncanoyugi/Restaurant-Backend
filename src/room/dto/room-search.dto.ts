@@ -3,8 +3,8 @@ import { Type } from 'class-transformer';
 
 export class RoomSearchDto {
   @IsUUID()
-  @IsNotEmpty()
-  restaurantId: string;
+  @IsOptional()
+  restaurantId?: string;
 
   @IsNumber()
   @Type(() => Number)

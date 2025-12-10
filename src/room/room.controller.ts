@@ -1,11 +1,11 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
   Query,
   ParseUUIDPipe,
   ParseIntPipe,
@@ -14,14 +14,14 @@ import {
   ClassSerializerInterceptor,
   UseGuards
 } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiBody, 
-  ApiParam, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
   ApiQuery,
-  ApiBearerAuth 
+  ApiBearerAuth
 } from '@nestjs/swagger';
 import { RoomService } from './room.service';
 import { CreateRoomDto } from './dto/create-room.dto';
@@ -32,17 +32,19 @@ import { RoomSearchDto } from './dto/room-search.dto';
 import { BookingSearchDto } from './dto/booking-search.dto';
 import { BookingStatusDto } from './dto/booking-status.dto';
 import { AvailabilityCheckDto } from './dto/availability-check.dto';
+import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { UserRoleEnum } from '../user/entities/user.types';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('rooms')
 @ApiBearerAuth()
 @Controller('rooms')
 @UseInterceptors(ClassSerializerInterceptor)
-@UseGuards(RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class RoomController {
-  constructor(private readonly roomService: RoomService) {}
+  constructor(private readonly roomService: RoomService) { }
 
   // Room endpoints
   @Post()
@@ -55,8 +57,8 @@ export class RoomController {
     return this.roomService.createRoom(createRoomDto);
   }
 
+  @Public()
   @Get()
-  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
   @ApiOperation({ summary: 'Get all rooms with filtering' })
   @ApiResponse({ status: 200, description: 'Rooms retrieved successfully' })
   @ApiQuery({ type: RoomSearchDto })
@@ -64,8 +66,8 @@ export class RoomController {
     return this.roomService.findAllRooms(searchDto);
   }
 
+  @Public()
   @Get('available')
-  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
   @ApiOperation({ summary: 'Search available rooms' })
   @ApiResponse({ status: 200, description: 'Available rooms retrieved successfully' })
   @ApiQuery({ type: RoomSearchDto })
@@ -73,8 +75,8 @@ export class RoomController {
     return this.roomService.searchAvailableRooms(searchDto);
   }
 
+  @Public()
   @Get(':id')
-  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
   @ApiOperation({ summary: 'Get room by ID' })
   @ApiResponse({ status: 200, description: 'Room retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Room not found' })
@@ -91,7 +93,7 @@ export class RoomController {
   @ApiParam({ name: 'id', description: 'Room ID', type: String })
   @ApiBody({ type: UpdateRoomDto })
   updateRoom(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateRoomDto: UpdateRoomDto
   ) {
     return this.roomService.updateRoom(id, updateRoomDto);
@@ -155,7 +157,7 @@ export class RoomController {
   @ApiParam({ name: 'id', description: 'Booking ID', type: String })
   @ApiBody({ type: UpdateRoomBookingDto })
   updateBooking(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateBookingDto: UpdateRoomBookingDto
   ) {
     return this.roomService.updateBooking(id, updateBookingDto);
@@ -169,7 +171,7 @@ export class RoomController {
   @ApiParam({ name: 'id', description: 'Booking ID', type: String })
   @ApiBody({ type: BookingStatusDto })
   updateBookingStatus(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() statusDto: BookingStatusDto
   ) {
     return this.roomService.updateBookingStatus(id, statusDto);

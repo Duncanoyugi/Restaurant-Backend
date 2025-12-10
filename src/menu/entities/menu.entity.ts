@@ -56,6 +56,9 @@ export class MenuItem {
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0, name: 'average_rating' })
   averageRating: number;
 
+  @Column({ type: 'int', default: 0, name: 'total_reviews' })
+  totalReviews: number;
+
   @Column({ type: 'int', default: 0 })
   calories: number;
 

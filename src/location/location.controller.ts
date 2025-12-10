@@ -1,4 +1,3 @@
-// backend\src\location\location.controller.ts
 import { 
   Controller, 
   Get, 
@@ -37,6 +36,7 @@ import { UpdateAddressDto } from './dto/update-address.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('location')
@@ -150,6 +150,19 @@ export class LocationController {
     return this.locationService.findStatesByCountry(countryId);
   }
 
+  @Get('states/country/:countryId/name/:stateName')
+  @ApiOperation({ summary: 'Get state by name and country ID' })
+  @ApiResponse({ status: 200, description: 'State retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'State not found' })
+  @ApiParam({ name: 'countryId', description: 'Country ID', type: String })
+  @ApiParam({ name: 'stateName', description: 'State name', type: String })
+  findStateByNameAndCountry(
+    @Param('countryId', ParseUUIDPipe) countryId: string,
+    @Param('stateName') stateName: string
+  ) {
+    return this.locationService.findStateByNameAndCountry(stateName, countryId);
+  }
+
   @Patch('states/:id')
   @UseGuards(RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
@@ -192,6 +205,7 @@ export class LocationController {
   }
 
   @Get('cities')
+  @Public()
   @ApiOperation({ summary: 'Get all cities' })
   @ApiResponse({ status: 200, description: 'Cities retrieved successfully' })
   findAllCities() {
@@ -214,6 +228,19 @@ export class LocationController {
   @ApiParam({ name: 'stateId', description: 'State ID', type: String })
   findCitiesByState(@Param('stateId', ParseUUIDPipe) stateId: string) {
     return this.locationService.findCitiesByState(stateId);
+  }
+
+  @Get('cities/state/:stateId/name/:cityName')
+  @ApiOperation({ summary: 'Get city by name and state ID' })
+  @ApiResponse({ status: 200, description: 'City retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'City not found' })
+  @ApiParam({ name: 'stateId', description: 'State ID', type: String })
+  @ApiParam({ name: 'cityName', description: 'City name', type: String })
+  findCityByNameAndState(
+    @Param('stateId', ParseUUIDPipe) stateId: string,
+    @Param('cityName') cityName: string
+  ) {
+    return this.locationService.findCityByNameAndState(cityName, stateId);
   }
 
   @Patch('cities/:id')

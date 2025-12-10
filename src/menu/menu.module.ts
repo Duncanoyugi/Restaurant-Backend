@@ -5,6 +5,7 @@ import { MenuController } from './menu.controller';
 import { MenuItem } from './entities/menu.entity';
 import { Category } from './entities/category.entity';
 import { RestaurantModule } from '../restaurant/restaurant.module'; // Add this import
+import { MenuSeeder } from './menu.seed';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { RestaurantModule } from '../restaurant/restaurant.module'; // Add this 
     RestaurantModule, // Add this line to import RestaurantModule
   ],
   controllers: [MenuController],
-  providers: [MenuService],
+  providers: [MenuService, MenuSeeder],
   exports: [MenuService, TypeOrmModule],
 })
-export class MenuModule {}
+export class MenuModule { }

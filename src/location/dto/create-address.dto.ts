@@ -9,8 +9,8 @@ import {
 
 export class CreateAddressDto {
   @IsUUID()
-  @IsNotEmpty()
-  userId: string;
+  @IsOptional()
+  userId?: string;
 
   @IsString()
   @IsNotEmpty()

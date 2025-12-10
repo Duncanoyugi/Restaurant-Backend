@@ -1,10 +1,10 @@
 // backend\src\menu\menu.service.ts
-import { 
-  Injectable, 
-  NotFoundException, 
+import {
+  Injectable,
+  NotFoundException,
   BadRequestException,
   ConflictException,
-  ForbiddenException 
+  ForbiddenException
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Like, In, FindOptionsWhere, IsNull } from 'typeorm';
@@ -30,7 +30,7 @@ export class MenuService {
     private categoryRepository: Repository<Category>,
     @InjectRepository(Restaurant)
     private restaurantRepository: Repository<Restaurant>,
-  ) {}
+  ) { }
 
   // Helper method to check restaurant ownership
   // Accepts either (user, restaurantId) or (restaurantId, user) to remain compatible with existing call sites.
@@ -91,11 +91,11 @@ export class MenuService {
       const restaurant = await this.restaurantRepository.findOne({
         where: { owner: { id: user.id } }
       });
-      
+
       if (!restaurant) {
         throw new NotFoundException('Restaurant not found for this user');
       }
-      
+
       return restaurant.id;
     }
 
@@ -126,10 +126,11 @@ export class MenuService {
     // Check if category name already exists
     const categoryWhere: FindOptionsWhere<Category> = { name: createCategoryDto.name } as FindOptionsWhere<Category>;
     if (createCategoryDto.restaurantId !== undefined && createCategoryDto.restaurantId !== null) {
-      categoryWhere.restaurantId = createCategoryDto.restaurantId as any;
+      // Use proper relation query syntax
+      categoryWhere.restaurant = { id: createCategoryDto.restaurantId } as any;
     } else {
-      // look for global categories where restaurantId IS NULL
-      categoryWhere.restaurantId = IsNull() as any;
+      // look for global categories where restaurant IS NULL
+      categoryWhere.restaurant = IsNull();
     }
     const existingCategory = await this.categoryRepository.findOne({
       where: categoryWhere
@@ -139,8 +140,14 @@ export class MenuService {
       throw new ConflictException('Category with this name already exists');
     }
 
-    const category = this.categoryRepository.create(createCategoryDto);
-    return await this.categoryRepository.save(category);
+    const categoryData: any = { ...createCategoryDto };
+    if (createCategoryDto.restaurantId) {
+      categoryData.restaurant = { id: createCategoryDto.restaurantId };
+      delete categoryData.restaurantId;
+    }
+    const category = this.categoryRepository.create(categoryData as any);
+    const savedCategory = await this.categoryRepository.save(category);
+    return savedCategory as unknown as Category;
   }
 
   async findAllCategories(searchDto: CategorySearchDto): Promise<Category[]> {
@@ -156,9 +163,10 @@ export class MenuService {
       where.active = active;
     }
 
-    if (restaurantId) {
-      // filter by related restaurant id to satisfy TypeORM typing (avoid assigning string to a relation property)
-      where.restaurantId = { id: restaurantId } as any;
+    if (restaurantId && restaurantId !== '') {
+      // filter by related restaurant id to satisfy TypeORM typing
+      // Since restaurantId is now a relationship, we query by relation ID
+      where.restaurant = { id: restaurantId } as any;
     }
 
     return await this.categoryRepository.find({
@@ -192,7 +200,7 @@ export class MenuService {
     // Check if name is being updated and if it already exists
     if (updateCategoryDto.name && updateCategoryDto.name !== category.name) {
       const existingCategory = await this.categoryRepository.findOne({
-        where: { 
+        where: {
           name: updateCategoryDto.name,
           restaurantId: category.restaurantId
         }
@@ -214,7 +222,7 @@ export class MenuService {
     if (category.restaurantId && user) {
       await this.checkRestaurantAccess(user, category.restaurantId);
     }
-    
+
     // Check if category has menu items
     const menuItemsCount = await this.menuItemRepository.count({
       where: { categoryId: id }
@@ -236,7 +244,7 @@ export class MenuService {
 
     // Check if menu item name already exists in the same restaurant
     const existingMenuItem = await this.menuItemRepository.findOne({
-      where: { 
+      where: {
         name: createMenuItemDto.name,
         restaurantId: createMenuItemDto.restaurantId
       }
@@ -255,18 +263,18 @@ export class MenuService {
   }
 
   async findAllMenuItems(searchDto: MenuSearchDto): Promise<{ data: MenuItem[], total: number }> {
-    const { 
-      restaurantId, 
-      categoryId, 
-      name, 
-      minPrice, 
-      maxPrice, 
-      available, 
+    const {
+      restaurantId,
+      categoryId,
+      name,
+      minPrice,
+      maxPrice,
+      available,
       isFeatured,
-      page = 1, 
-      limit = 20 
+      page = 1,
+      limit = 20
     } = searchDto;
-    
+
     const skip = (page - 1) * limit;
 
     const where: FindOptionsWhere<MenuItem> = {};
@@ -300,10 +308,10 @@ export class MenuService {
       relations: ['restaurant', 'category', 'reviews'],
       skip,
       take: limit,
-      order: { 
-        isFeatured: 'DESC', 
-        averageRating: 'DESC', 
-        createdAt: 'DESC' 
+      order: {
+        isFeatured: 'DESC',
+        averageRating: 'DESC',
+        createdAt: 'DESC'
       }
     });
 
@@ -320,8 +328,8 @@ export class MenuService {
     const menuItem = await this.menuItemRepository.findOne({
       where: { id },
       relations: [
-        'restaurant', 
-        'category', 
+        'restaurant',
+        'category',
         'reviews',
         'reviews.user'
       ],
@@ -349,7 +357,7 @@ export class MenuService {
     // Check if name is being updated and if it already exists in the same restaurant
     if (updateMenuItemDto.name && updateMenuItemDto.name !== menuItem.name) {
       const existingMenuItem = await this.menuItemRepository.findOne({
-        where: { 
+        where: {
           name: updateMenuItemDto.name,
           restaurantId: updateMenuItemDto.restaurantId || menuItem.restaurantId
         }
@@ -361,7 +369,7 @@ export class MenuService {
     }
 
     const updateData: any = { ...updateMenuItemDto };
-    
+
     // Handle allergens serialization
     if (updateMenuItemDto.allergens) {
       updateData.allergens = JSON.stringify(updateMenuItemDto.allergens);
@@ -397,7 +405,7 @@ export class MenuService {
       }
     }
 
-    const menuItems = bulkDto.items.map(item => 
+    const menuItems = bulkDto.items.map(item =>
       this.menuItemRepository.create({
         ...item,
         allergens: item.allergens ? JSON.stringify(item.allergens) : null
@@ -420,9 +428,9 @@ export class MenuService {
       order: { sortOrder: 'ASC', name: 'ASC' }
     });
 
-    const menuWhere: FindOptionsWhere<MenuItem> = { 
-      restaurantId, 
-      available: true 
+    const menuWhere: FindOptionsWhere<MenuItem> = {
+      restaurantId,
+      available: true
     };
 
     if (categoryId) {
@@ -432,7 +440,7 @@ export class MenuService {
     const menuItems = await this.menuItemRepository.find({
       where: menuWhere,
       relations: ['category'],
-      order: { 
+      order: {
         category: { sortOrder: 'ASC' },
         isFeatured: 'DESC',
         averageRating: 'DESC'
@@ -449,9 +457,9 @@ export class MenuService {
   }
 
   async getFeaturedMenuItems(restaurantId?: string, limit: number = 10): Promise<MenuItem[]> {
-    const where: FindOptionsWhere<MenuItem> = { 
-      isFeatured: true, 
-      available: true 
+    const where: FindOptionsWhere<MenuItem> = {
+      isFeatured: true,
+      available: true
     };
 
     if (restaurantId) {
@@ -508,9 +516,9 @@ export class MenuService {
     // Filter items that don't contain any of the specified allergens
     const filteredItems = menuItems.filter(item => {
       if (!item.allergens) return true;
-      
+
       const itemAllergens: string[] = JSON.parse(item.allergens);
-      return !allergens.some(allergen => 
+      return !allergens.some(allergen =>
         itemAllergens.includes(allergen)
       );
     });
@@ -541,10 +549,10 @@ export class MenuService {
   // Update menu item rating
   async updateMenuItemRating(menuItemId: string, newRating: number): Promise<MenuItem> {
     const menuItem = await this.findMenuItemById(menuItemId);
-    
+
     // In a real scenario, you'd calculate this based on all reviews
     menuItem.averageRating = newRating;
-    
+
     return await this.menuItemRepository.save(menuItem);
   }
 
@@ -558,9 +566,9 @@ export class MenuService {
     }
 
     menuItem.available = !menuItem.available;
-    
+
     const updatedItem = await this.menuItemRepository.save(menuItem);
-    
+
     // Parse allergens for response
     return {
       ...updatedItem,

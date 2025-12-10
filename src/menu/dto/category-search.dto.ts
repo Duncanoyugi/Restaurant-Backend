@@ -1,4 +1,5 @@
 import { IsOptional, IsString, IsBoolean, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CategorySearchDto {
   @IsUUID()
@@ -10,6 +11,7 @@ export class CategorySearchDto {
   name?: string;
 
   @IsBoolean()
+  @Type(() => Boolean)
   @IsOptional()
   active?: boolean;
 }

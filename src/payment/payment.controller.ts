@@ -1,12 +1,12 @@
-// backend\src\payment\payment.controller.ts
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
   HttpCode,
   HttpStatus,
   Headers,
@@ -16,14 +16,14 @@ import {
   BadRequestException,
   ForbiddenException
 } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiBody, 
-  ApiParam, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
   ApiHeader,
-  ApiBearerAuth 
+  ApiBearerAuth
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { PaymentService } from './payment.service';
@@ -39,15 +39,15 @@ import { UserRoleEnum } from '../user/entities/user.types';
 @ApiTags('payments')
 @ApiBearerAuth('JWT-auth')
 @Controller('payments')
-@UseGuards(JwtAuthGuard)
 export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
+  constructor(private readonly paymentService: PaymentService) { }
 
   /**
    * Initialize a new payment
    * POST /payments/initialize
    */
   @Post('initialize')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Initialize a new payment' })
   @ApiResponse({ status: 201, description: 'Payment initialized successfully' })
@@ -59,13 +59,13 @@ export class PaymentController {
     if (createPaymentDto.userId && createPaymentDto.userId !== req.user.id) {
       throw new ForbiddenException('You can only create payments for yourself');
     }
-    
+
     // Auto-assign user ID if not provided
     const paymentData = {
       ...createPaymentDto,
       userId: createPaymentDto.userId || req.user.id
     };
-    
+
     return this.paymentService.initializePayment(paymentData, req.user);
   }
 
@@ -74,6 +74,7 @@ export class PaymentController {
    * POST /payments/verify
    */
   @Post('verify')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify payment status' })
   @ApiResponse({ status: 200, description: 'Payment verification completed' })
@@ -106,7 +107,7 @@ export class PaymentController {
     if (!signature) {
       throw new BadRequestException('Missing webhook signature');
     }
-    
+
     return this.paymentService.handleWebhook(paystackWebhookDto, signature);
   }
 
@@ -115,7 +116,7 @@ export class PaymentController {
    * GET /payments
    */
   @Get()
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiOperation({ summary: 'Get all payments (Admin only)' })
   @ApiResponse({ status: 200, description: 'List of all payments retrieved successfully' })
@@ -129,6 +130,7 @@ export class PaymentController {
    * GET /payments/:id
    */
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get payment by ID' })
   @ApiResponse({ status: 200, description: 'Payment retrieved successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this payment' })
@@ -143,6 +145,7 @@ export class PaymentController {
    * GET /payments/reference/:reference
    */
   @Get('reference/:reference')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get payment by reference' })
   @ApiResponse({ status: 200, description: 'Payment retrieved successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this payment' })
@@ -157,6 +160,7 @@ export class PaymentController {
    * GET /payments/user/:userId
    */
   @Get('user/:userId')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get user payment history' })
   @ApiResponse({ status: 200, description: 'User payments retrieved successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this user payments' })
@@ -174,7 +178,7 @@ export class PaymentController {
    * PATCH /payments/:id
    */
   @Patch(':id')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiOperation({ summary: 'Update payment (Admin only)' })
   @ApiResponse({ status: 200, description: 'Payment updated successfully' })
@@ -183,7 +187,7 @@ export class PaymentController {
   @ApiParam({ name: 'id', description: 'Payment ID' })
   @ApiBody({ type: UpdatePaymentDto })
   async update(
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Body() updatePaymentDto: UpdatePaymentDto,
     @Request() req
   ) {
@@ -195,7 +199,7 @@ export class PaymentController {
    * DELETE /payments/:id
    */
   @Delete(':id')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiOperation({ summary: 'Delete payment (Admin only)' })
   @ApiResponse({ status: 200, description: 'Payment deleted successfully' })
@@ -211,7 +215,7 @@ export class PaymentController {
    * POST /payments/:id/refund
    */
   @Post(':id/refund')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Initiate refund for a payment (Admin & Restaurant Owner only)' })
@@ -220,7 +224,7 @@ export class PaymentController {
   @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiParam({ name: 'id', description: 'Payment ID' })
-  @ApiBody({ 
+  @ApiBody({
     schema: {
       type: 'object',
       properties: {
@@ -253,6 +257,7 @@ export class PaymentController {
    * GET /payments/:id/invoice
    */
   @Get(':id/invoice')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Download invoice PDF' })
   @ApiResponse({ status: 200, description: 'Invoice retrieved successfully' })
   @ApiResponse({ status: 400, description: 'No invoice found for this payment' })
@@ -261,7 +266,7 @@ export class PaymentController {
   @ApiParam({ name: 'id', description: 'Payment ID' })
   async getInvoice(@Param('id') id: string, @Res() res: Response, @Request() req) {
     const payment = await this.paymentService.findOne(id, req.user);
-    
+
     if (!payment.invoices || payment.invoices.length === 0) {
       throw new BadRequestException('No invoice found for this payment');
     }
@@ -280,6 +285,7 @@ export class PaymentController {
    * GET /payments/my-payments
    */
   @Get('my-payments')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get current user payment history' })
   @ApiResponse({ status: 200, description: 'User payments retrieved successfully' })
   async getMyPayments(@Request() req) {
@@ -287,11 +293,39 @@ export class PaymentController {
   }
 
   /**
+   * Handle Paystack payment callback
+   * GET /payments/callback
+   * This endpoint must be public as Paystack redirects users here without auth tokens
+   */
+  @Get('callback')
+  @ApiOperation({ summary: 'Handle Paystack payment callback' })
+  @ApiResponse({ status: 200, description: 'Payment callback processed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid callback parameters' })
+  async handlePaymentCallback(
+    @Query('trxref') trxref: string,
+    @Query('reference') reference: string,
+    @Res() res: Response
+  ) {
+    try {
+      const result = await this.paymentService.handlePaymentCallback(trxref, reference);
+
+      // Redirect to frontend success page
+      if (result.success) {
+        res.redirect(`${process.env.FRONTEND_URL}/payment/success?reference=${reference}`);
+      } else {
+        res.redirect(`${process.env.FRONTEND_URL}/payment/failed?reference=${reference}`);
+      }
+    } catch (error) {
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5174'}/payment/verification?reference=${reference}&error=${error.message}`);
+    }
+  }
+
+  /**
    * Get restaurant payments (for restaurant owners)
    * GET /payments/restaurant/my-payments
    */
   @Get('restaurant/my-payments')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.RESTAURANT_OWNER)
   @ApiOperation({ summary: 'Get current restaurant payments (Restaurant Owner only)' })
   @ApiResponse({ status: 200, description: 'Restaurant payments retrieved successfully' })

@@ -1,12 +1,12 @@
 // backend\src\menu\menu.controller.ts
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
   Query,
   ParseUUIDPipe,
   ParseIntPipe,
@@ -17,14 +17,14 @@ import {
   Request,
   ForbiddenException
 } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiBody, 
-  ApiParam, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
   ApiQuery,
-  ApiBearerAuth 
+  ApiBearerAuth
 } from '@nestjs/swagger';
 import { MenuService } from './menu.service';
 import { CreateMenuItemDto } from './dto/create-menu-item.dto';
@@ -37,6 +37,7 @@ import { BulkMenuItemsDto } from './dto/bulk-menu-items.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('menu')
@@ -45,7 +46,7 @@ import { UserRoleEnum } from '../user/entities/user.types';
 @UseInterceptors(ClassSerializerInterceptor)
 @UseGuards(JwtAuthGuard)
 export class MenuController {
-  constructor(private readonly menuService: MenuService) {}
+  constructor(private readonly menuService: MenuService) { }
 
   // Category endpoints - Restaurant Owner and Admin only
   @Post('categories')
@@ -60,6 +61,7 @@ export class MenuController {
     return this.menuService.createCategory(createCategoryDto, req.user);
   }
 
+  @Public()
   @Get('categories')
   @ApiOperation({ summary: 'Get all menu categories with filtering' })
   @ApiResponse({ status: 200, description: 'Categories retrieved successfully' })
@@ -68,6 +70,7 @@ export class MenuController {
     return this.menuService.findAllCategories(searchDto);
   }
 
+  @Public()
   @Get('categories/:id')
   @ApiOperation({ summary: 'Get menu category by ID' })
   @ApiResponse({ status: 200, description: 'Category retrieved successfully' })
@@ -87,7 +90,7 @@ export class MenuController {
   @ApiParam({ name: 'id', description: 'Category ID', type: String })
   @ApiBody({ type: UpdateCategoryDto })
   updateCategory(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
     @Request() req
   ) {
@@ -131,6 +134,7 @@ export class MenuController {
     return this.menuService.createBulkMenuItems(bulkDto, req.user);
   }
 
+  @Public()
   @Get('items')
   @ApiOperation({ summary: 'Get all menu items with filtering' })
   @ApiResponse({ status: 200, description: 'Menu items retrieved successfully' })
@@ -139,6 +143,7 @@ export class MenuController {
     return this.menuService.findAllMenuItems(searchDto);
   }
 
+  @Public()
   @Get('items/:id')
   @ApiOperation({ summary: 'Get menu item by ID' })
   @ApiResponse({ status: 200, description: 'Menu item retrieved successfully' })
@@ -158,7 +163,7 @@ export class MenuController {
   @ApiParam({ name: 'id', description: 'Menu item ID', type: String })
   @ApiBody({ type: UpdateMenuItemDto })
   updateMenuItem(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateMenuItemDto: UpdateMenuItemDto,
     @Request() req
   ) {
@@ -190,6 +195,7 @@ export class MenuController {
   }
 
   // Restaurant-specific menu endpoints - Public read access
+  @Public()
   @Get('restaurant/:restaurantId')
   @ApiOperation({ summary: 'Get restaurant menu with optional category filter' })
   @ApiResponse({ status: 200, description: 'Restaurant menu retrieved successfully' })
@@ -203,6 +209,7 @@ export class MenuController {
     return this.menuService.getRestaurantMenu(restaurantId, categoryId);
   }
 
+  @Public()
   @Get('restaurant/:restaurantId/featured')
   @ApiOperation({ summary: 'Get featured menu items for restaurant' })
   @ApiResponse({ status: 200, description: 'Featured items retrieved successfully' })
@@ -228,6 +235,7 @@ export class MenuController {
     return this.menuService.getMenuStatistics(restaurantId, req.user);
   }
 
+  @Public()
   @Get('restaurant/:restaurantId/price-range')
   @ApiOperation({ summary: 'Get menu price range for restaurant' })
   @ApiResponse({ status: 200, description: 'Price range calculated successfully' })
@@ -238,6 +246,7 @@ export class MenuController {
   }
 
   // Search and filter endpoints - Public access
+  @Public()
   @Get('search')
   @ApiOperation({ summary: 'Search menu items by query' })
   @ApiResponse({ status: 200, description: 'Search completed successfully' })
@@ -250,6 +259,7 @@ export class MenuController {
     return this.menuService.searchMenuItems(query, restaurantId);
   }
 
+  @Public()
   @Get('filter/allergens')
   @ApiOperation({ summary: 'Filter menu items by allergens' })
   @ApiResponse({ status: 200, description: 'Filter completed successfully' })
@@ -265,6 +275,7 @@ export class MenuController {
   }
 
   // Global featured items - Public access
+  @Public()
   @Get('featured')
   @ApiOperation({ summary: 'Get globally featured menu items' })
   @ApiResponse({ status: 200, description: 'Featured items retrieved successfully' })

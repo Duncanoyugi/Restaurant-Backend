@@ -154,6 +154,13 @@ export class LocationService {
     });
   }
 
+  async findStateByNameAndCountry(stateName: string, countryId: string): Promise<State | null> {
+    return await this.stateRepository.findOne({
+      where: { name: stateName, countryId },
+      relations: ['cities'],
+    });
+  }
+
   async updateState(id: string, updateStateDto: UpdateStateDto): Promise<State> {
     const state = await this.findOneState(id);
     Object.assign(state, updateStateDto);
@@ -196,6 +203,13 @@ export class LocationService {
       where: { stateId },
       relations: ['state'],
       order: { name: 'ASC' },
+    });
+  }
+
+  async findCityByNameAndState(cityName: string, stateId: string): Promise<City | null> {
+    return await this.cityRepository.findOne({
+      where: { name: cityName, stateId },
+      relations: ['state'],
     });
   }
 

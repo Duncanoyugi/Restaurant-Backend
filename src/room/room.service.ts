@@ -1,11 +1,11 @@
-import { 
-  Injectable, 
-  NotFoundException, 
+import {
+  Injectable,
+  NotFoundException,
   BadRequestException,
-  ConflictException 
+  ConflictException
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, Like, FindOptionsWhere, MoreThanOrEqual, LessThanOrEqual, In } from 'typeorm';
+import { Repository, Between, Like, FindOptionsWhere, MoreThanOrEqual, LessThanOrEqual, In, DataSource } from 'typeorm';
 import { Room } from './entities/room.entity';
 import { RoomBooking, RoomBookingStatus } from './entities/room-booking.entity';
 import { CreateRoomDto } from './dto/create-room.dto';
@@ -16,6 +16,9 @@ import { RoomSearchDto } from './dto/room-search.dto';
 import { BookingSearchDto } from './dto/booking-search.dto';
 import { BookingStatusDto } from './dto/booking-status.dto';
 import { AvailabilityCheckDto } from './dto/availability-check.dto';
+import { User } from '../user/entities/user.entity';
+import { PaymentService } from '../payment/payment.service';
+import { CreatePaymentDto } from '../payment/dto/create-payment.dto';
 
 @Injectable()
 export class RoomService {
@@ -24,6 +27,9 @@ export class RoomService {
     private roomRepository: Repository<Room>,
     @InjectRepository(RoomBooking)
     private roomBookingRepository: Repository<RoomBooking>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+    private paymentService: PaymentService,
   ) {}
 
   // In backend\src\room\room.service.ts
@@ -208,7 +214,34 @@ export class RoomService {
     };
 
     const booking = this.roomBookingRepository.create(bookingData);
-    return await this.roomBookingRepository.save(booking);
+    const savedBooking = await this.roomBookingRepository.save(booking);
+
+    // Initialize payment if payment method is provided
+    if (createBookingDto.paymentMethod) {
+      // Get user information for payment
+      const user = await this.userRepository.findOne({
+        where: { id: createBookingDto.userId }
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const paymentDto: CreatePaymentDto = {
+        amount: createBookingDto.totalPrice,
+        currency: 'NGN',
+        customerEmail: createBookingDto.customerEmail || user.email,
+        customerName: createBookingDto.customerName || user.name,
+        method: createBookingDto.paymentMethod as any,
+        roomBookingId: savedBooking.id,
+        userId: createBookingDto.userId,
+        callbackUrl: createBookingDto.callbackUrl
+      };
+
+      await this.paymentService.initializePayment(paymentDto);
+    }
+
+    return savedBooking;
   }
 
   async findAllBookings(searchDto: BookingSearchDto): Promise<{ data: RoomBooking[], total: number }> {

@@ -1,8 +1,8 @@
-import { 
-  Injectable, 
-  NotFoundException, 
+import {
+  Injectable,
+  NotFoundException,
   BadRequestException,
-  ConflictException 
+  ConflictException
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Like, In } from 'typeorm';
@@ -26,7 +26,7 @@ export class RestaurantService {
     private staffRepository: Repository<RestaurantStaff>,
     @InjectRepository(Shift)
     private shiftRepository: Repository<Shift>,
-  ) {}
+  ) { }
 
   // Restaurant CRUD operations
   async create(createRestaurantDto: CreateRestaurantDto): Promise<Restaurant> {
@@ -80,9 +80,9 @@ export class RestaurantService {
     const restaurant = await this.restaurantRepository.findOne({
       where: { id },
       relations: [
-        'city', 
-        'city.state', 
-        'city.state.country', 
+        'city',
+        'city.state',
+        'city.state.country',
         'owner',
         'staff',
         'staff.user'
@@ -173,8 +173,8 @@ export class RestaurantService {
     const conflictingShift = await this.shiftRepository
       .createQueryBuilder('shift')
       .where('shift.staffId = :staffId', { staffId: createShiftDto.staffId })
-      .andWhere('shift.shiftDate = :shiftDate', { 
-        shiftDate: new Date(createShiftDto.shiftDate).toISOString().split('T')[0] 
+      .andWhere('shift.shiftDate = :shiftDate', {
+        shiftDate: new Date(createShiftDto.shiftDate).toISOString().split('T')[0]
       })
       .andWhere('(shift.startTime BETWEEN :start AND :end OR shift.endTime BETWEEN :start AND :end)')
       .setParameters({
@@ -259,14 +259,14 @@ export class RestaurantService {
     // Filter restaurants within radius
     return restaurants.filter(restaurant => {
       if (!restaurant.latitude || !restaurant.longitude) return false;
-      
+
       const distance = this.calculateDistance(
         latitude,
         longitude,
         restaurant.latitude,
         restaurant.longitude
       );
-      
+
       return distance <= radiusKm;
     });
   }
@@ -276,11 +276,11 @@ export class RestaurantService {
 
     const [totalStaff, activeShifts, totalMenuItems] = await Promise.all([
       this.staffRepository.count({ where: { restaurantId, active: true } }),
-      this.shiftRepository.count({ 
-        where: { 
+      this.shiftRepository.count({
+        where: {
           staff: { restaurantId },
           status: 'Scheduled'
-        } 
+        }
       }),
       // This would come from menu module
       Promise.resolve(0) // Placeholder for menu items count
@@ -303,9 +303,9 @@ export class RestaurantService {
 
   async getPopularRestaurantsInCity(cityId: string, limit: number = 10): Promise<Restaurant[]> {
     return await this.restaurantRepository.find({
-      where: { 
-        cityId, 
-        active: true 
+      where: {
+        cityId,
+        active: true
       },
       relations: ['city', 'owner'],
       order: { averageRating: 'DESC', createdAt: 'DESC' },
@@ -318,12 +318,27 @@ export class RestaurantService {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return Number((R * c).toFixed(2));
+  }
+
+  // Get default restaurant (for single restaurant system)
+  async getDefaultRestaurant(): Promise<Restaurant> {
+    const restaurant = await this.restaurantRepository.findOne({
+      where: { active: true },
+      relations: ['city', 'city.state', 'city.state.country', 'owner'],
+      order: { createdAt: 'ASC' } // Get the first created restaurant
+    });
+
+    if (!restaurant) {
+      throw new NotFoundException('No active restaurant found. Please contact system administrator.');
+    }
+
+    return restaurant;
   }
 
   // Validate restaurant ownership

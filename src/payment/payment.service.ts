@@ -76,7 +76,7 @@ export class PaymentService {
     private dataSource: DataSource,
   ) {
     this.paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || '';
-    
+
     if (!this.paystackSecretKey) {
       this.logger.error('PAYSTACK_SECRET_KEY is not configured');
       throw new Error('PAYSTACK_SECRET_KEY is required');
@@ -148,11 +148,11 @@ export class PaymentService {
       const restaurant = await this.restaurantRepository.findOne({
         where: { owner: { id: user.id } }
       });
-      
+
       if (!restaurant) {
         throw new NotFoundException('Restaurant not found for this user');
       }
-      
+
       return restaurant.id;
     }
 
@@ -181,7 +181,7 @@ export class PaymentService {
 
       // Generate unique reference
       const reference = `RMS_${uuidv4().replace(/-/g, '').substring(0, 20)}`;
-      
+
       // Prepare payment data for Paystack
       const paymentData = {
         email: createPaymentDto.customerEmail,
@@ -214,7 +214,7 @@ export class PaymentService {
           ],
           payment_type: this.getPaymentType(createPaymentDto),
         },
-        callback_url: createPaymentDto.callbackUrl || `${process.env.FRONTEND_URL}/payment/callback`
+        callback_url: createPaymentDto.callbackUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payments/callback`
       };
 
       // Call Paystack API to initialize transaction
@@ -277,11 +277,11 @@ export class PaymentService {
     } catch (error) {
       await queryRunner.rollbackTransaction();
       this.logger.error('Failed to initialize payment', error.stack);
-      
+
       if (error instanceof HttpException || error instanceof ForbiddenException) {
         throw error;
       }
-      
+
       throw new HttpException(
         error.response?.data?.message || 'Failed to initialize payment',
         HttpStatus.BAD_REQUEST,
@@ -371,7 +371,7 @@ export class PaymentService {
         payment.status = PaymentStatus.FAILED;
         payment.gatewayResponse = verificationData.data.gateway_response;
         await queryRunner.manager.save(payment);
-        
+
         this.logger.warn(`Payment verification failed: ${reference}`);
       }
 
@@ -380,8 +380,8 @@ export class PaymentService {
 
       return {
         success: payment.status === PaymentStatus.SUCCESS,
-        message: payment.status === PaymentStatus.SUCCESS 
-          ? 'Payment verified successfully' 
+        message: payment.status === PaymentStatus.SUCCESS
+          ? 'Payment verified successfully'
           : 'Payment verification failed',
         data: {
           status: payment.status,
@@ -394,11 +394,11 @@ export class PaymentService {
     } catch (error) {
       await queryRunner.rollbackTransaction();
       this.logger.error('Failed to verify payment', error.stack);
-      
+
       if (error instanceof HttpException || error instanceof ForbiddenException) {
         throw error;
       }
-      
+
       throw new HttpException(
         error.response?.data?.message || 'Failed to verify payment',
         HttpStatus.BAD_REQUEST,
@@ -502,7 +502,7 @@ export class PaymentService {
       payment.status = PaymentStatus.FAILED;
       payment.gatewayResponse = data.gateway_response || 'Payment failed';
       await queryRunner.manager.save(payment);
-      
+
       this.logger.warn(`Payment failed: ${data.reference}`);
     }
   }
@@ -526,7 +526,7 @@ export class PaymentService {
    */
   private async createInvoiceWithTransaction(payment: Payment, queryRunner: any) {
     const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-    
+
     const invoice = queryRunner.manager.create(Invoice, {
       paymentId: payment.id,
       invoiceNumber,
@@ -623,11 +623,15 @@ export class PaymentService {
       card: ['card'],
       bank: ['bank'],
       ussd: ['ussd'],
-      mobile_money: ['mobile_money'],
+      mobile_money: ['mobile_money', 'mpesa', 'airtel', 'orange', 'vodafone'],
       bank_transfer: ['bank_transfer'],
+      mpesa: ['mpesa'],
+      airtel: ['airtel'],
+      orange: ['orange'],
+      vodafone: ['vodafone'],
     };
 
-    return channelMap[method] || ['card', 'bank', 'ussd', 'mobile_money'];
+    return channelMap[method] || ['card', 'bank', 'ussd', 'mobile_money', 'mpesa', 'airtel', 'orange', 'vodafone'];
   }
 
   /**
@@ -760,9 +764,70 @@ export class PaymentService {
       index === self.findIndex(p => p.id === payment.id)
     );
 
-    return uniquePayments.sort((a, b) => 
+    return uniquePayments.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+  }
+
+  /**
+   * Handle Paystack payment callback
+   */
+  async handlePaymentCallback(trxref: string, reference: string): Promise<{
+    success: boolean;
+    message: string;
+    data?: any;
+  }> {
+    // Handle payment callback logic
+    try {
+      // Use the reference parameter (they should be the same)
+      const paymentReference = reference || trxref;
+
+      // Find payment record
+      const payment = await this.paymentRepository.findOne({
+        where: { reference: paymentReference },
+      });
+
+      if (!payment) {
+        throw new NotFoundException('Payment not found');
+      }
+
+      // If already processed, return current status
+      if (payment.status === PaymentStatus.SUCCESS) {
+        return {
+          success: true,
+          message: 'Payment already completed successfully',
+          data: {
+            status: payment.status,
+            paymentId: payment.id,
+            amount: payment.amount,
+            paidAt: payment.paidAt,
+          },
+        };
+      }
+
+      if (payment.status === PaymentStatus.FAILED) {
+        return {
+          success: false,
+          message: 'Payment failed',
+          data: {
+            status: payment.status,
+            paymentId: payment.id,
+            amount: payment.amount,
+          },
+        };
+      }
+
+      // Verify payment with Paystack
+      const verifyResult = await this.verifyPayment({ reference: paymentReference });
+
+      return verifyResult;
+    } catch (error) {
+      this.logger.error('Payment callback handling failed', error.stack);
+      return {
+        success: false,
+        message: error.message || 'Payment callback processing failed',
+      };
+    }
   }
 
   /**
@@ -831,9 +896,9 @@ export class PaymentService {
         payment.status = PaymentStatus.REFUNDED;
         payment.gatewayResponse = `Refunded: ${reason}`;
         await queryRunner.manager.save(payment);
-        
+
         await queryRunner.commitTransaction();
-        
+
         this.logger.log(`Refund initiated for payment: ${paymentId}`);
         return {
           success: true,

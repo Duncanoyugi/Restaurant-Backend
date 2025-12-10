@@ -1,16 +1,17 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Query,
-  UseInterceptors,
-  ClassSerializerInterceptor,
-  UseGuards
-} from '@nestjs/common';
+   Controller,
+   Get,
+   Post,
+   Body,
+   Patch,
+   Param,
+   Delete,
+   Query,
+   UseInterceptors,
+   ClassSerializerInterceptor,
+   UseGuards,
+   Req
+ } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -102,4 +103,17 @@ export class UserController {
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }
+
+  @Get('me/dashboard')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get current user dashboard data' })
+  @ApiResponse({ status: 200, description: 'Dashboard data retrieved successfully' })
+  getMyDashboard(@Req() req: any) {
+    return {
+      user: req.user,
+      message: 'Dashboard data retrieved successfully',
+      timestamp: new Date().toISOString()
+    };
+  }
+
 }

@@ -130,8 +130,17 @@ export class AuthService {
         id: updatedUser.id,
         name: updatedUser.name,
         email: updatedUser.email,
+        phone: updatedUser.phone,
         role: updatedUser.role,
         emailVerified: true,
+        status: updatedUser.status,
+        profileImage: updatedUser.profileImage,
+        averageRating: updatedUser.averageRating,
+        totalDeliveries: updatedUser.totalDeliveries,
+        isOnline: updatedUser.isOnline,
+        isAvailable: updatedUser.isAvailable,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
       },
       ...tokens,
     };
@@ -161,81 +170,69 @@ export class AuthService {
   }
 
   // =========================================================================
-  // LOGIN (Updated with better debugging)
+  // LOGIN
   // =========================================================================
   async login(loginDto: LoginDto) {
-    console.log(`🔐 Login attempt for: ${loginDto.email}`);
-    
     const user = await this.validateUser(loginDto.email, loginDto.password);
-    console.log(`🔐 User validation result: ${!!user}`);
 
     if (!user) {
-      console.log(`🔐 Invalid credentials for: ${loginDto.email}`);
       throw new UnauthorizedException('Invalid email or password');
     }
 
     if (user.status !== UserStatus.ACTIVE) {
-      console.log(`🔐 Account not active for: ${loginDto.email}, status: ${user.status}`);
       throw new UnauthorizedException('Account is not active');
     }
 
     // Check if email is verified
     if (!user.emailVerified) {
-      console.log(`🔐 Email not verified for: ${loginDto.email}`);
       throw new UnauthorizedException('Please verify your email address before logging in');
     }
 
     const tokens = await this.generateTokens(user);
-    console.log(`🔐 Login successful for: ${loginDto.email}`);
 
     return {
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         role: user.role,
         emailVerified: user.emailVerified,
+        status: user.status,
+        profileImage: user.profileImage,
+        averageRating: user.averageRating,
+        totalDeliveries: user.totalDeliveries,
+        isOnline: user.isOnline,
+        isAvailable: user.isAvailable,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       },
       ...tokens,
     };
   }
 
   // =========================================================================
-  // VALIDATE USER (LOGIN) - Updated with better debugging
+  // VALIDATE USER (LOGIN)
   // =========================================================================
   async validateUser(email: string, password: string) {
-    console.log(`🔐 Validating user: ${email}`);
-    
     // Must include password + role
     const user = await this.usersService.findByEmailWithPassword(email);
-    console.log(`🔐 User found in database: ${!!user}`);
 
     if (!user) {
-      console.log(`🔐 No user found with email: ${email}`);
       return null;
     }
 
-    console.log(`🔐 User status: ${user.status}`);
-    console.log(`🔐 Email verified: ${user.emailVerified}`);
-    console.log(`🔐 Stored hashed password exists: ${!!user.password}`);
-    console.log(`🔐 Provided password length: ${password?.length}`);
-    console.log(`🔐 Role loaded: ${!!user.role?.name}`);
-
     // Check if user has a password (in case of social login users)
     if (!user.password) {
-      console.log(`🔐 No password set for user: ${email}`);
       return null;
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    console.log(`🔐 Password valid: ${isPasswordValid}`);
 
     if (!isPasswordValid) {
-      console.log(`🔐 Invalid password for: ${email}`);
       return null;
     }
 
-    console.log(`🔐 User validation successful for: ${email}`);
     return user;
   }
 

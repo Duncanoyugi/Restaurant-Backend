@@ -8,8 +8,10 @@ export const databaseConfig = registerAs('database', () => ({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   schema: process.env.DB_SCHEMA || 'dbo',
-  entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  synchronize: process.env.DB_SYNC === 'true',
+  entities: [
+    __dirname + '/../**/*.entity{.ts,.js}'
+  ],
+  synchronize: false,
   logging: process.env.DB_LOGGING === 'true',
   options: {
     encrypt: process.env.DB_ENCRYPT === 'true',

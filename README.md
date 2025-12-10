@@ -1,98 +1,247 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Restaurant Management System - Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A comprehensive backend API for a restaurant management system built with NestJS, TypeORM, and MSSQL.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Overview
 
-## Description
+This backend provides RESTful APIs for managing restaurant operations including user authentication, menu management, order processing, inventory tracking, delivery management, analytics, and more.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Technology Stack
 
-## Project setup
+- **Framework**: NestJS
+- **Database**: MSSQL with TypeORM
+- **Authentication**: JWT with Passport
+- **Validation**: class-validator
+- **Documentation**: Swagger/OpenAPI
+- **Email**: Nodemailer
+- **Payment**: Paystack integration
+- **OTP**: Custom OTP service
+- **Push Notifications**: Firebase integration
 
-```bash
-$ npm install
+## Features
+
+### Core Modules
+
+#### 🔐 Authentication & Authorization
+- User registration with email verification
+- JWT-based authentication
+- Role-based access control (Admin, Staff, Driver, Customer)
+- Password reset with OTP
+- Refresh token mechanism
+
+#### 👥 User Management
+- Multi-role user system
+- Profile management
+- User status tracking
+
+#### 🍽️ Menu Management
+- Category-based menu organization
+- Menu item CRUD operations
+- Bulk menu operations
+
+#### 📋 Order Management
+- Order creation and tracking
+- Order status management
+- Kitchen order processing
+- Delivery assignment
+
+#### 📍 Location Management
+- Address management
+- City/State/Country hierarchy
+
+#### 📦 Inventory Management
+- Stock tracking
+- Supplier management
+- Stock transactions and adjustments
+
+#### 🚚 Delivery Management
+- Driver assignment
+- Delivery tracking
+- Vehicle management
+- Delivery estimates
+
+#### 💳 Payment Processing
+- Paystack integration
+- Invoice generation
+- Payment verification
+
+#### 📊 Analytics
+- Business metrics tracking
+- User behavior analytics
+- Activity logging
+
+#### 🔔 Notifications
+- Push notifications
+- Email notifications
+- In-app notifications
+
+#### 📧 Email Service
+- Template-based emails
+- Email logging
+- Welcome and verification emails
+
+#### 🔢 OTP Service
+- OTP generation and verification
+- Email and SMS OTP support
+
+## API Documentation
+
+The API is fully documented using Swagger. When running the application, visit `/api` to access the interactive API documentation.
+
+### Base URL
+```
+http://localhost:3000
 ```
 
-## Compile and run the project
-
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+### Authentication
+Most endpoints require JWT authentication. Include the token in the Authorization header:
+```
+Authorization: Bearer <your-jwt-token>
 ```
 
-## Run tests
+## Getting Started
 
+### Prerequisites
+- Node.js (v18+)
+- MSSQL Server
+- npm or yarn
+
+### Installation
+
+1. Install dependencies:
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm install
 ```
+
+2. Set up environment variables:
+Create a `.env` file in the root directory with the following variables:
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=1433
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+DB_DATABASE=restaurant_db
+
+# JWT
+JWT_SECRET=your_jwt_secret
+JWT_REFRESH_SECRET=your_refresh_secret
+
+# Email
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
+
+# Paystack
+PAYSTACK_SECRET_KEY=your_paystack_secret
+PAYSTACK_PUBLIC_KEY=your_paystack_public
+
+# Other configs...
+```
+
+3. Run database migrations:
+```bash
+npm run migration:run
+```
+
+4. Start the development server:
+```bash
+npm run start:dev
+```
+
+The API will be available at `http://localhost:3000`
+
+## Database Schema
+
+The application uses TypeORM entities with the following main entities:
+
+- **User**: User accounts with roles
+- **Menu**: Menu items and categories
+- **Order**: Customer orders
+- **Inventory**: Stock items and suppliers
+- **Delivery**: Delivery tracking
+- **Payment**: Payment transactions
+- **Analytics**: Business metrics
+- **Notification**: System notifications
+
+## Key Endpoints
+
+### Authentication
+- `POST /auth/register` - Register new user
+- `POST /auth/login` - User login
+- `POST /auth/verify-email` - Verify email with OTP
+- `POST /auth/forgot-password` - Request password reset
+- `POST /auth/reset-password` - Reset password with OTP
+- `POST /auth/refresh` - Refresh access token
+- `GET /auth/profile` - Get user profile
+
+### Menu Management
+- `GET /menu` - Get menu items
+- `POST /menu` - Create menu item (Admin/Staff)
+- `PUT /menu/:id` - Update menu item
+- `DELETE /menu/:id` - Delete menu item
+
+### Order Management
+- `POST /order` - Create order
+- `GET /order` - Get orders (filtered by role)
+- `PUT /order/:id/status` - Update order status
+- `POST /order/:id/assign-driver` - Assign driver to order
+
+### Inventory
+- `GET /inventory` - Get inventory items
+- `POST /inventory` - Add inventory item
+- `PUT /inventory/:id` - Update inventory item
+- `POST /inventory/:id/adjust` - Adjust stock levels
+
+### Delivery
+- `GET /delivery` - Get deliveries
+- `POST /delivery/track` - Create delivery tracking
+- `PUT /delivery/:id/status` - Update delivery status
+
+## Development
+
+### Available Scripts
+- `npm run start:dev` - Start development server with hot reload
+- `npm run build` - Build for production
+- `npm run test` - Run unit tests
+- `npm run test:e2e` - Run end-to-end tests
+- `npm run lint` - Run ESLint
+
+### Database Operations
+- `npm run migration:generate` - Generate migration from entity changes
+- `npm run migration:run` - Run pending migrations
+- `npm run migration:revert` - Revert last migration
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+1. Build the application:
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run build
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+2. Start production server:
+```bash
+npm run start:prod
+```
 
-## Resources
+## Security Features
 
-Check out a few resources that may come in handy when working with NestJS:
+- JWT authentication with refresh tokens
+- Role-based access control
+- Input validation with class-validator
+- SQL injection prevention with TypeORM
+- CORS configuration
+- Rate limiting (can be added)
+- Helmet for security headers
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Contributing
 
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+1. Follow the existing code style
+2. Add tests for new features
+3. Update API documentation
+4. Ensure all tests pass before submitting PR
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is licensed under the UNLICENSED license.

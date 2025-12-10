@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PaymentService } from './payment.service';
 import { PaymentController } from './payment.controller';
@@ -18,7 +18,7 @@ import { RoomModule } from '../room/room.module';
     RestaurantModule, // This provides RestaurantRepository
     OrderModule, // This provides OrderRepository
     ReservationModule, // This provides ReservationRepository
-    RoomModule, // This provides RoomBookingRepository
+    forwardRef(() => RoomModule), // This provides RoomBookingRepository
   ],
   controllers: [PaymentController],
   providers: [PaymentService],

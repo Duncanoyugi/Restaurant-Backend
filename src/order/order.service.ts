@@ -1,10 +1,10 @@
 // backend\src\order\order.service.ts
-import { 
-  Injectable, 
-  NotFoundException, 
+import {
+  Injectable,
+  NotFoundException,
   BadRequestException,
   ConflictException,
-  ForbiddenException 
+  ForbiddenException
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, FindOptionsWhere, In, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
@@ -23,6 +23,7 @@ import { OrderStatsDto } from './dto/order-stats.dto';
 import { User } from '../user/entities/user.entity';
 import { UserRoleEnum } from '../user/entities/user.types';
 import { Restaurant } from '../restaurant/entities/restaurant.entity';
+import { RestaurantService } from '../restaurant/restaurant.service';
 
 @Injectable()
 export class OrderService {
@@ -37,7 +38,8 @@ export class OrderService {
     private statusCatalogRepository: Repository<StatusCatalog>,
     @InjectRepository(Restaurant)
     private restaurantRepository: Repository<Restaurant>,
-  ) {}
+    private restaurantService: RestaurantService,
+  ) { }
 
   // Helper method to check order access
   private async checkOrderAccess(user: User, orderId: string): Promise<Order> {
@@ -109,11 +111,11 @@ export class OrderService {
       const restaurant = await this.restaurantRepository.findOne({
         where: { owner: { id: user.id } }
       });
-      
+
       if (!restaurant) {
         throw new NotFoundException('Restaurant not found for this user');
       }
-      
+
       return restaurant.id;
     }
 
@@ -139,6 +141,12 @@ export class OrderService {
     // Customers can only create orders for themselves
     if (user && user.role.name === UserRoleEnum.CUSTOMER && createOrderDto.userId !== user.id) {
       throw new ForbiddenException('You can only create orders for yourself');
+    }
+
+    // Auto-inject default restaurant ID if not provided
+    if (!createOrderDto.restaurantId) {
+      const defaultRestaurant = await this.restaurantService.getDefaultRestaurant();
+      createOrderDto.restaurantId = defaultRestaurant.id;
     }
 
     // Validate order type requirements
@@ -218,18 +226,18 @@ export class OrderService {
   }
 
   async findAllOrders(searchDto: OrderSearchDto, user?: User): Promise<{ data: Order[], total: number }> {
-    const { 
-      restaurantId, 
-      userId, 
+    const {
+      restaurantId,
+      userId,
       driverId,
       statusId,
       orderType,
       startDate,
       endDate,
-      page = 1, 
-      limit = 20 
+      page = 1,
+      limit = 20
     } = searchDto;
-    
+
     const skip = (page - 1) * limit;
 
     const where: FindOptionsWhere<Order> = {};
@@ -275,10 +283,10 @@ export class OrderService {
     const [data, total] = await this.orderRepository.findAndCount({
       where,
       relations: [
-        'restaurant', 
-        'user', 
-        'driver', 
-        'table', 
+        'restaurant',
+        'user',
+        'driver',
+        'table',
         'deliveryAddress',
         'status',
         'orderItems',
@@ -288,7 +296,7 @@ export class OrderService {
       ],
       skip,
       take: limit,
-      order: { 
+      order: {
         createdAt: 'DESC'
       }
     });
@@ -300,10 +308,10 @@ export class OrderService {
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: [
-        'restaurant', 
-        'user', 
-        'driver', 
-        'table', 
+        'restaurant',
+        'user',
+        'driver',
+        'table',
         'deliveryAddress',
         'status',
         'orderItems',
@@ -331,10 +339,10 @@ export class OrderService {
     const order = await this.orderRepository.findOne({
       where: { orderNumber },
       relations: [
-        'restaurant', 
-        'user', 
-        'driver', 
-        'table', 
+        'restaurant',
+        'user',
+        'driver',
+        'table',
         'deliveryAddress',
         'status',
         'orderItems',
@@ -364,7 +372,7 @@ export class OrderService {
       if (user.role.name === UserRoleEnum.CUSTOMER && order.userId !== user.id) {
         throw new ForbiddenException('You can only update your own orders');
       }
-      
+
       if ((user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
         const hasAccess = await this.checkRestaurantAccess(user, order.restaurantId);
         if (!hasAccess) {
@@ -384,9 +392,9 @@ export class OrderService {
 
     // Validate order type requirements if changing order type
     if (updateOrderDto.orderType) {
-      this.validateOrderTypeRequirements({ 
-        ...updateOrderDto, 
-        items: updateOrderDto.items || order.orderItems 
+      this.validateOrderTypeRequirements({
+        ...updateOrderDto,
+        items: updateOrderDto.items || order.orderItems
       });
     }
 
@@ -417,7 +425,7 @@ export class OrderService {
     if (updateOrderDto.comment !== undefined) {
       order.comment = updateOrderDto.comment;
     }
-    
+
     if (updateOrderDto.scheduledTime !== undefined) {
       if (updateOrderDto.scheduledTime) {
         order.scheduledTime = new Date(updateOrderDto.scheduledTime);
@@ -462,7 +470,7 @@ export class OrderService {
       if (user.role.name === UserRoleEnum.CUSTOMER && order.userId !== user.id) {
         throw new ForbiddenException('You can only delete your own orders');
       }
-      
+
       if ((user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
         const hasAccess = await this.checkRestaurantAccess(user, order.restaurantId);
         if (!hasAccess) {
@@ -492,7 +500,7 @@ export class OrderService {
       if (user.role.name === UserRoleEnum.DRIVER && order.driverId !== user.id) {
         throw new ForbiddenException('You can only update status for orders assigned to you');
       }
-      
+
       if ((user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
         const hasAccess = await this.checkRestaurantAccess(user, order.restaurantId);
         if (!hasAccess) {
@@ -535,7 +543,7 @@ export class OrderService {
 
   async getOrderStatusHistory(orderId: string, user?: User): Promise<OrderStatus[]> {
     const order = await this.findOrderById(orderId, user);
-    return order.statusHistory.sort((a, b) => 
+    return order.statusHistory.sort((a, b) =>
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
   }
@@ -632,7 +640,7 @@ export class OrderService {
         'orderItems.menuItem',
         'status'
       ],
-      order: { 
+      order: {
         createdAt: 'ASC'
       }
     });
@@ -680,7 +688,7 @@ export class OrderService {
         'orderItems.menuItem',
         'status'
       ],
-      order: { 
+      order: {
         createdAt: 'ASC'
       }
     });
@@ -713,7 +721,7 @@ export class OrderService {
 
     const totalOrders = orders.length;
     const totalRevenue = orders.reduce((sum, order) => sum + parseFloat(order.finalPrice.toString()), 0);
-    
+
     const statusCounts = await this.orderRepository
       .createQueryBuilder('order')
       .select('status.name', 'status')
@@ -781,7 +789,7 @@ export class OrderService {
   // New method for restaurant users to get their orders
   async getMyRestaurantOrders(user: User): Promise<{ data: Order[], total: number }> {
     const restaurantId = await this.getUserRestaurantId(user);
-    
+
     const searchDto: OrderSearchDto = {
       restaurantId,
       page: 1,
@@ -814,7 +822,7 @@ export class OrderService {
         // In production, you'd fetch the actual price from the menu item
         const unitPrice = 10; // Mock price - replace with actual database query
         const totalPrice = unitPrice * item.quantity;
-        
+
         return {
           menuItemId: item.menuItemId,
           unitPrice,
