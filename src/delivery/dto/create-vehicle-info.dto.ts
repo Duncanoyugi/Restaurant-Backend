@@ -1,42 +1,48 @@
-import { 
-  IsString, 
-  IsNotEmpty, 
-  IsUUID, 
-  IsOptional, 
-  Length 
-} from 'class-validator';
+// backend\src\delivery\dto\create-vehicle-info.dto.ts
+import { IsString, IsNumber, IsOptional, Length, Matches } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateVehicleInfoDto {
-  @IsUUID()
-  @IsNotEmpty()
-  userId: string;
+  @ApiProperty({ description: 'User ID of the vehicle owner' })
+  @IsNumber()
+  userId: number;
 
+  @ApiProperty({ description: 'Vehicle manufacturer', example: 'Toyota' })
   @IsString()
-  @IsNotEmpty()
+  @Length(1, 50)
   vehicleMake: string;
 
+  @ApiProperty({ description: 'Vehicle model', example: 'Camry' })
   @IsString()
-  @IsNotEmpty()
+  @Length(1, 50)
   vehicleModel: string;
 
+  @ApiProperty({ description: 'Vehicle year', example: '2022' })
   @IsString()
   @Length(4, 4)
-  @IsNotEmpty()
+  @Matches(/^\d{4}$/, { message: 'Year must be a 4-digit number' })
   vehicleYear: string;
 
+  @ApiProperty({ description: 'License plate number', example: 'ABC-123' })
   @IsString()
-  @IsNotEmpty()
+  @Length(1, 20)
   licensePlate: string;
 
-  @IsString()
+  @ApiProperty({ description: 'Driver license number', example: 'DL1234567', required: false })
   @IsOptional()
+  @IsString()
+  @Length(1, 50)
   licenseNumber?: string;
 
-  @IsString()
+  @ApiProperty({ description: 'Vehicle color', example: 'Red', required: false })
   @IsOptional()
+  @IsString()
+  @Length(1, 50)
   color?: string;
 
-  @IsString()
+  @ApiProperty({ description: 'Vehicle type', example: 'Car', required: false })
   @IsOptional()
+  @IsString()
+  @Length(1, 50)
   vehicleType?: string;
 }

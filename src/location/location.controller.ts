@@ -70,8 +70,8 @@ export class LocationController {
   @ApiOperation({ summary: 'Get country by ID' })
   @ApiResponse({ status: 200, description: 'Country retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Country not found' })
-  @ApiParam({ name: 'id', description: 'Country ID', type: String })
-  findOneCountry(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'Country ID', type: Number })
+  findOneCountry(@Param('id', ParseIntPipe) id: number) {
     return this.locationService.findOneCountry(id);
   }
 
@@ -91,10 +91,10 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Country updated successfully' })
   @ApiResponse({ status: 404, description: 'Country not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
-  @ApiParam({ name: 'id', description: 'Country ID', type: String })
+  @ApiParam({ name: 'id', description: 'Country ID', type: Number })
   @ApiBody({ type: UpdateCountryDto })
   updateCountry(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateCountryDto: UpdateCountryDto
   ) {
     return this.locationService.updateCountry(id, updateCountryDto);
@@ -107,8 +107,8 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Country deleted successfully' })
   @ApiResponse({ status: 404, description: 'Country not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
-  @ApiParam({ name: 'id', description: 'Country ID', type: String })
-  removeCountry(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'Country ID', type: Number })
+  removeCountry(@Param('id', ParseIntPipe) id: number) {
     return this.locationService.removeCountry(id);
   }
 
@@ -136,8 +136,8 @@ export class LocationController {
   @ApiOperation({ summary: 'Get state by ID' })
   @ApiResponse({ status: 200, description: 'State retrieved successfully' })
   @ApiResponse({ status: 404, description: 'State not found' })
-  @ApiParam({ name: 'id', description: 'State ID', type: String })
-  findOneState(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'State ID', type: Number })
+  findOneState(@Param('id', ParseIntPipe) id: number) {
     return this.locationService.findOneState(id);
   }
 
@@ -145,8 +145,8 @@ export class LocationController {
   @ApiOperation({ summary: 'Get states by country ID' })
   @ApiResponse({ status: 200, description: 'States retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Country not found' })
-  @ApiParam({ name: 'countryId', description: 'Country ID', type: String })
-  findStatesByCountry(@Param('countryId', ParseUUIDPipe) countryId: string) {
+  @ApiParam({ name: 'countryId', description: 'Country ID', type: Number })
+  findStatesByCountry(@Param('countryId', ParseIntPipe) countryId: number) {
     return this.locationService.findStatesByCountry(countryId);
   }
 
@@ -154,10 +154,10 @@ export class LocationController {
   @ApiOperation({ summary: 'Get state by name and country ID' })
   @ApiResponse({ status: 200, description: 'State retrieved successfully' })
   @ApiResponse({ status: 404, description: 'State not found' })
-  @ApiParam({ name: 'countryId', description: 'Country ID', type: String })
+  @ApiParam({ name: 'countryId', description: 'Country ID', type: Number })
   @ApiParam({ name: 'stateName', description: 'State name', type: String })
   findStateByNameAndCountry(
-    @Param('countryId', ParseUUIDPipe) countryId: string,
+    @Param('countryId', ParseIntPipe) countryId: number,
     @Param('stateName') stateName: string
   ) {
     return this.locationService.findStateByNameAndCountry(stateName, countryId);
@@ -170,10 +170,10 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'State updated successfully' })
   @ApiResponse({ status: 404, description: 'State not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
-  @ApiParam({ name: 'id', description: 'State ID', type: String })
+  @ApiParam({ name: 'id', description: 'State ID', type: Number })
   @ApiBody({ type: UpdateStateDto })
   updateState(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateStateDto: UpdateStateDto
   ) {
     return this.locationService.updateState(id, updateStateDto);
@@ -186,8 +186,8 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'State deleted successfully' })
   @ApiResponse({ status: 404, description: 'State not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
-  @ApiParam({ name: 'id', description: 'State ID', type: String })
-  removeState(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'State ID', type: Number })
+  removeState(@Param('id', ParseIntPipe) id: number) {
     return this.locationService.removeState(id);
   }
 
@@ -216,8 +216,8 @@ export class LocationController {
   @ApiOperation({ summary: 'Get city by ID' })
   @ApiResponse({ status: 200, description: 'City retrieved successfully' })
   @ApiResponse({ status: 404, description: 'City not found' })
-  @ApiParam({ name: 'id', description: 'City ID', type: String })
-  findOneCity(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'City ID', type: Number })
+  findOneCity(@Param('id', ParseIntPipe) id: number) {
     return this.locationService.findOneCity(id);
   }
 
@@ -225,8 +225,8 @@ export class LocationController {
   @ApiOperation({ summary: 'Get cities by state ID' })
   @ApiResponse({ status: 200, description: 'Cities retrieved successfully' })
   @ApiResponse({ status: 404, description: 'State not found' })
-  @ApiParam({ name: 'stateId', description: 'State ID', type: String })
-  findCitiesByState(@Param('stateId', ParseUUIDPipe) stateId: string) {
+  @ApiParam({ name: 'stateId', description: 'State ID', type: Number })
+  findCitiesByState(@Param('stateId', ParseIntPipe) stateId: number) {
     return this.locationService.findCitiesByState(stateId);
   }
 
@@ -234,10 +234,10 @@ export class LocationController {
   @ApiOperation({ summary: 'Get city by name and state ID' })
   @ApiResponse({ status: 200, description: 'City retrieved successfully' })
   @ApiResponse({ status: 404, description: 'City not found' })
-  @ApiParam({ name: 'stateId', description: 'State ID', type: String })
+  @ApiParam({ name: 'stateId', description: 'State ID', type: Number })
   @ApiParam({ name: 'cityName', description: 'City name', type: String })
   findCityByNameAndState(
-    @Param('stateId', ParseUUIDPipe) stateId: string,
+    @Param('stateId', ParseIntPipe) stateId: number,
     @Param('cityName') cityName: string
   ) {
     return this.locationService.findCityByNameAndState(cityName, stateId);
@@ -250,10 +250,10 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'City updated successfully' })
   @ApiResponse({ status: 404, description: 'City not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
-  @ApiParam({ name: 'id', description: 'City ID', type: String })
+  @ApiParam({ name: 'id', description: 'City ID', type: Number })
   @ApiBody({ type: UpdateCityDto })
   updateCity(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateCityDto: UpdateCityDto
   ) {
     return this.locationService.updateCity(id, updateCityDto);
@@ -266,8 +266,8 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'City deleted successfully' })
   @ApiResponse({ status: 404, description: 'City not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
-  @ApiParam({ name: 'id', description: 'City ID', type: String })
-  removeCity(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'City ID', type: Number })
+  removeCity(@Param('id', ParseIntPipe) id: number) {
     return this.locationService.removeCity(id);
   }
 
@@ -306,8 +306,8 @@ export class LocationController {
   @ApiOperation({ summary: 'Get address by ID' })
   @ApiResponse({ status: 200, description: 'Address retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Address not found' })
-  @ApiParam({ name: 'id', description: 'Address ID', type: String })
-  findOneAddress(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Address ID', type: Number })
+  findOneAddress(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.locationService.findOneAddress(id, req.user);
   }
 
@@ -315,8 +315,8 @@ export class LocationController {
   @ApiOperation({ summary: 'Get addresses by user ID' })
   @ApiResponse({ status: 200, description: 'Addresses retrieved successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  @ApiParam({ name: 'userId', description: 'User ID', type: String })
-  findAddressesByUser(@Param('userId', ParseUUIDPipe) userId: string, @Request() req) {
+  @ApiParam({ name: 'userId', description: 'User ID', type: Number })
+  findAddressesByUser(@Param('userId', ParseIntPipe) userId: number, @Request() req) {
     // Users can only view their own addresses unless they're admin
     if (req.user.role.name !== UserRoleEnum.ADMIN && req.user.id !== userId) {
       throw new ForbiddenException('You can only view your own addresses');
@@ -328,8 +328,8 @@ export class LocationController {
   @ApiOperation({ summary: 'Get default address for user' })
   @ApiResponse({ status: 200, description: 'Default address retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Default address not found' })
-  @ApiParam({ name: 'userId', description: 'User ID', type: String })
-  findDefaultAddress(@Param('userId', ParseUUIDPipe) userId: string, @Request() req) {
+  @ApiParam({ name: 'userId', description: 'User ID', type: Number })
+  findDefaultAddress(@Param('userId', ParseIntPipe) userId: number, @Request() req) {
     // Users can only view their own default address unless they're admin
     if (req.user.role.name !== UserRoleEnum.ADMIN && req.user.id !== userId) {
       throw new ForbiddenException('You can only view your own default address');
@@ -341,10 +341,10 @@ export class LocationController {
   @ApiOperation({ summary: 'Update address by ID' })
   @ApiResponse({ status: 200, description: 'Address updated successfully' })
   @ApiResponse({ status: 404, description: 'Address not found' })
-  @ApiParam({ name: 'id', description: 'Address ID', type: String })
+  @ApiParam({ name: 'id', description: 'Address ID', type: Number })
   @ApiBody({ type: UpdateAddressDto })
   updateAddress(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateAddressDto: UpdateAddressDto,
     @Request() req
   ) {
@@ -355,8 +355,8 @@ export class LocationController {
   @ApiOperation({ summary: 'Delete address by ID' })
   @ApiResponse({ status: 200, description: 'Address deleted successfully' })
   @ApiResponse({ status: 404, description: 'Address not found' })
-  @ApiParam({ name: 'id', description: 'Address ID', type: String })
-  removeAddress(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Address ID', type: Number })
+  removeAddress(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.locationService.removeAddress(id, req.user);
   }
 
@@ -382,11 +382,11 @@ export class LocationController {
   @ApiOperation({ summary: 'Validate delivery address for restaurant' })
   @ApiResponse({ status: 200, description: 'Delivery address validated successfully' })
   @ApiResponse({ status: 400, description: 'Delivery not available to this address' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  @ApiParam({ name: 'addressId', description: 'Address ID', type: String })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
+  @ApiParam({ name: 'addressId', description: 'Address ID', type: Number })
   validateDeliveryAddress(
-    @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
-    @Param('addressId', ParseUUIDPipe) addressId: string,
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
+    @Param('addressId', ParseIntPipe) addressId: number,
     @Request() req
   ) {
     return this.locationService.validateDeliveryAddress(restaurantId, addressId, req.user);

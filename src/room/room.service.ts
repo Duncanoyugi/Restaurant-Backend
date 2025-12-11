@@ -83,7 +83,7 @@ export class RoomService {
     
     const skip = (page - 1) * limit;
 
-    const where: FindOptionsWhere<Room> = { restaurantId };
+    const where: FindOptionsWhere<Room> = { restaurantId: Number(restaurantId) };
 
     if (minCapacity !== undefined) {
       where.capacity = MoreThanOrEqual(minCapacity);
@@ -120,7 +120,7 @@ export class RoomService {
     return { data: filteredData, total: filteredData.length };
   }
 
-  async findRoomById(id: string): Promise<Room> {
+  async findRoomById(id: number): Promise<Room> {
     const room = await this.roomRepository.findOne({
       where: { id },
       relations: ['restaurant', 'bookings', 'bookings.user'],
@@ -133,7 +133,7 @@ export class RoomService {
     return this.parseRoomData(room);
   }
 
-  async updateRoom(id: string, updateRoomDto: UpdateRoomDto): Promise<Room> {
+  async updateRoom(id: number, updateRoomDto: UpdateRoomDto): Promise<Room> {
     const room = await this.findRoomById(id);
 
     // Check if name is being updated and if it already exists in the same restaurant
@@ -165,7 +165,7 @@ export class RoomService {
     return this.parseRoomData(updatedRoom);
   }
 
-  async removeRoom(id: string): Promise<void> {
+  async removeRoom(id: number): Promise<void> {
     const room = await this.findRoomById(id);
     
     // Check if room has active bookings
@@ -185,11 +185,11 @@ export class RoomService {
 
   // Room Booking operations
   async createRoomBooking(createBookingDto: CreateRoomBookingDto): Promise<RoomBooking> {
-    const room = await this.findRoomById(createBookingDto.roomId);
+    const room = await this.findRoomById(Number(createBookingDto.roomId));
 
     // Check room availability
     const isAvailable = await this.isRoomAvailable(
-      createBookingDto.roomId,
+      Number(createBookingDto.roomId),
       createBookingDto.checkInDate,
       createBookingDto.checkOutDate
     );
@@ -213,14 +213,18 @@ export class RoomService {
       checkOutDate: new Date(createBookingDto.checkOutDate)
     };
 
-    const booking = this.roomBookingRepository.create(bookingData);
+    const booking = this.roomBookingRepository.create({
+      ...bookingData,
+      roomId: Number(bookingData.roomId),
+      userId: Number(bookingData.userId)
+    });
     const savedBooking = await this.roomBookingRepository.save(booking);
 
     // Initialize payment if payment method is provided
     if (createBookingDto.paymentMethod) {
       // Get user information for payment
       const user = await this.userRepository.findOne({
-        where: { id: createBookingDto.userId }
+        where: { id: Number(createBookingDto.userId) }
       });
 
       if (!user) {
@@ -234,7 +238,7 @@ export class RoomService {
         customerName: createBookingDto.customerName || user.name,
         method: createBookingDto.paymentMethod as any,
         roomBookingId: savedBooking.id,
-        userId: createBookingDto.userId,
+        userId: Number(createBookingDto.userId),
         callbackUrl: createBookingDto.callbackUrl
       };
 
@@ -296,7 +300,7 @@ export class RoomService {
     return { data, total };
   }
 
-  async findBookingById(id: string): Promise<RoomBooking> {
+  async findBookingById(id: number): Promise<RoomBooking> {
     const booking = await this.roomBookingRepository.findOne({
       where: { id },
       relations: ['room', 'room.restaurant', 'user', 'payment'],
@@ -322,7 +326,7 @@ export class RoomService {
     return booking;
   }
 
-  async updateBooking(id: string, updateBookingDto: UpdateRoomBookingDto): Promise<RoomBooking> {
+  async updateBooking(id: number, updateBookingDto: UpdateRoomBookingDto): Promise<RoomBooking> {
     const booking = await this.findBookingById(id);
 
     // Prevent updates for completed or cancelled bookings
@@ -352,7 +356,7 @@ export class RoomService {
     return await this.roomBookingRepository.save(booking);
   }
 
-  async updateBookingStatus(id: string, statusDto: BookingStatusDto): Promise<RoomBooking> {
+  async updateBookingStatus(id: number, statusDto: BookingStatusDto): Promise<RoomBooking> {
     const booking = await this.findBookingById(id);
 
     // Validate status transitions
@@ -362,7 +366,7 @@ export class RoomService {
     return await this.roomBookingRepository.save(booking);
   }
 
-  async cancelBooking(id: string, performedBy?: string): Promise<RoomBooking> {
+  async cancelBooking(id: number, performedBy?: string): Promise<RoomBooking> {
     const booking = await this.findBookingById(id);
 
     // Only allow cancellation for pending or confirmed bookings
@@ -376,7 +380,7 @@ export class RoomService {
 
   // Availability and Search operations
   async checkAvailability(availabilityDto: AvailabilityCheckDto): Promise<{ available: boolean, room?: Room, message?: string }> {
-    const room = await this.findRoomById(availabilityDto.roomId);
+    const room = await this.findRoomById(Number(availabilityDto.roomId));
 
     // Check capacity
     if (availabilityDto.guests > room.capacity) {
@@ -388,7 +392,7 @@ export class RoomService {
 
     // Check availability for dates
     const isAvailable = await this.isRoomAvailable(
-      availabilityDto.roomId,
+      Number(availabilityDto.roomId),
       availabilityDto.checkInDate,
       availabilityDto.checkOutDate
     );
@@ -428,7 +432,7 @@ export class RoomService {
   }
 
   // Analytics and Reporting
-  async getRoomOccupancy(roomId: string, startDate: string, endDate: string): Promise<{ occupiedDays: number, totalDays: number, occupancyRate: number }> {
+  async getRoomOccupancy(roomId: number, startDate: string, endDate: string): Promise<{ occupiedDays: number, totalDays: number, occupancyRate: number }> {
     const bookings = await this.roomBookingRepository.find({
       where: {
         roomId,
@@ -457,7 +461,7 @@ export class RoomService {
     };
   }
 
-  async getUpcomingCheckIns(restaurantId: string, days: number = 7): Promise<RoomBooking[]> {
+  async getUpcomingCheckIns(restaurantId: number, days: number = 7): Promise<RoomBooking[]> {
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + days);
@@ -473,7 +477,7 @@ export class RoomService {
     });
   }
 
-  async getUpcomingCheckOuts(restaurantId: string, days: number = 7): Promise<RoomBooking[]> {
+  async getUpcomingCheckOuts(restaurantId: number, days: number = 7): Promise<RoomBooking[]> {
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + days);
@@ -490,7 +494,7 @@ export class RoomService {
   }
 
   // Helper methods
-  private async isRoomAvailable(roomId: string, checkInDate: string, checkOutDate: string, excludeBookingId?: string): Promise<boolean> {
+  private async isRoomAvailable(roomId: number, checkInDate: string, checkOutDate: string, excludeBookingId?: number): Promise<boolean> {
     const conflictingBookings = await this.roomBookingRepository
       .createQueryBuilder('booking')
       .where('booking.roomId = :roomId', { roomId })

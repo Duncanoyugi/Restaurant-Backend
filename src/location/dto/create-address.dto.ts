@@ -1,16 +1,16 @@
 import { 
   IsString, 
   IsNotEmpty, 
-  IsUUID, 
   IsOptional, 
   IsNumber, 
-  IsBoolean 
+  IsBoolean,
+  IsInt 
 } from 'class-validator';
 
 export class CreateAddressDto {
-  @IsUUID()
+  @IsInt()
   @IsOptional()
-  userId?: string;
+  userId?: number;  // Changed from string/UUID to number
 
   @IsString()
   @IsNotEmpty()
@@ -40,9 +40,9 @@ export class CreateAddressDto {
   @IsOptional()
   isDefault?: boolean;
 
-  @IsUUID()
+  @IsInt()
   @IsNotEmpty()
-  cityId: string;
+  cityId: number;  // Changed from string/UUID to number
 
   @IsString()
   @IsOptional()

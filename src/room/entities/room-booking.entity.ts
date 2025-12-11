@@ -27,17 +27,17 @@ import { Payment } from '../../payment/entities/payment.entity';
 @Entity('room_booking')
 @Index(['roomId', 'checkInDate'])
 export class RoomBooking {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'varchar', length: 20, unique: true, name: 'booking_number' })
   bookingNumber: string;
 
-  @Column({ type: 'uuid', name: 'room_id' })
-  roomId: string;
+  @Column({ name: 'room_id' })
+  roomId: number;
 
-  @Column({ type: 'uuid', name: 'user_id' })
-  userId: string;
+  @Column({ name: 'user_id' })
+  userId: number;
 
   @Column({ type: 'date', name: 'check_in_date' })
   checkInDate: Date;
@@ -55,8 +55,8 @@ export class RoomBooking {
   @Column({ type: 'varchar', length: 20, default: 'Pending' })
   status: RoomBookingStatus;
 
-  @Column({ type: 'uuid', nullable: true, name: 'payment_id' })
-  paymentId: string;
+  @Column({ nullable: true, name: 'payment_id' })
+  paymentId: number;
 
   @Column({ type: 'text', nullable: true, name: 'special_requests' })
   specialRequests: string;

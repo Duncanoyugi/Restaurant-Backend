@@ -1,3 +1,4 @@
+// backend\src\payment\entities\payment.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -8,8 +9,8 @@ import {
   OneToOne,
   OneToMany,
   JoinColumn,
-  Index,
 } from 'typeorm';
+
 import { User } from '../../user/entities/user.entity';
 import { Order } from '../../order/entities/order.entity';
 import { Reservation } from '../../reservation/entities/reservation.entity';
@@ -32,89 +33,154 @@ export enum PaymentMethod {
   BANK_TRANSFER = 'bank_transfer',
 }
 
-@Entity('payment')
-@Index(['reference'])
-@Index(['userId', 'createdAt'])
+export enum PaymentGateway {
+  PAYSTACK = 'paystack',
+}
+
+@Entity()
 export class Payment {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'user_id' })
-  userId: string;
+  @Column({ type: 'varchar', length: 50, unique: true })
+  payment_number: string;
 
-  @Column({ type: 'uuid', nullable: true, name: 'order_id' })
-  orderId: string;
+  @Column({ type: 'varchar', length: 255 })
+  email: string;
 
-  @Column({ type: 'uuid', nullable: true, name: 'reservation_id' })
-  reservationId: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  authorization_url?: string;
 
-  @Column({ type: 'uuid', nullable: true, name: 'room_booking_id' })
-  roomBookingId: string;
+  // Add explicit user_id column
+  @Column({ nullable: false })
+  user_id: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   amount: number;
 
-  @Column({ type: 'varchar', length: 10, default: 'NGN' })
+  @Column({ type: 'varchar', length: 3, default: 'KES' })
   currency: string;
 
-  @Column({ type: 'varchar', length: 20, default: PaymentStatus.PENDING })
-  status: PaymentStatus;
+  @Column({ type: 'varchar', length: 50 })
+  payment_method: PaymentMethod;
 
-  @Column({ type: 'varchar', length: 50, default: PaymentMethod.CARD })
-  method: string;
+  @Column({ type: 'varchar', length: 50 })
+  gateway: PaymentGateway;
 
   @Column({ type: 'varchar', length: 100, unique: true })
-  reference: string;
+  payment_reference: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true, name: 'access_code' })
-  accessCode: string;
+  @Column({ type: 'varchar', length: 50, default: PaymentStatus.PENDING })
+  status: PaymentStatus;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'authorization_url' })
-  authorizationUrl: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  transaction_id?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'gateway_response' })
-  gatewayResponse: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  gateway_reference?: string;
 
-  @Column({ type: 'nvarchar', nullable: true })
-  metadata: string;
+  @Column({ type: 'varchar', length: 4000, nullable: true })
+  gateway_response?: string;
 
-  @Column({ type: 'datetime', nullable: true, name: 'paid_at' })
-  paidAt: Date;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  failure_reason?: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  channel: string;
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  refunded_amount: number;
 
-  @Column({ type: 'varchar', length: 50, nullable: true, name: 'ip_address' })
-  ipAddress: string;
+  @Column({
+    type: 'datetime2',
+    nullable: true,
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  processed_at?: Date;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'customer_email' })
-  customerEmail: string;
+  @Column({ type: 'datetime2', nullable: true })
+  failed_at?: Date;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'customer_name' })
-  customerName: string;
+  @Column({ type: 'datetime2', nullable: true })
+  paid_at?: Date;
 
-  @ManyToOne(() => User)
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  channel?: string;
+
+  @Column({ type: 'varchar', length: 2000, nullable: true })
+  metadata?: string;
+
+  @Column({ type: 'bit', default: false })
+  delivery_initiated: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  delivery_reference?: number;
+
+  @Column({ type: 'varchar', length: 2000, nullable: true })
+  delivery_error?: string;
+
+  @Column({ type: 'varchar', length: 1000, nullable: true })
+  callback_url?: string;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+
+  // ------------------------
+  // RELATIONS
+  // ------------------------
+
+  @ManyToOne(() => Order, (order) => order.payment, { nullable: true })
+  @JoinColumn({ name: 'order_id' })
+  order?: Order;
+
+  @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @OneToOne(() => Order, (order) => order.payment)
-  @JoinColumn({ name: 'order_id' })
-  order: Order;
-
-  @OneToOne(() => Reservation, (reservation) => reservation.payment)
+  @OneToOne(() => Reservation, (reservation) => reservation.payment, { nullable: true })
   @JoinColumn({ name: 'reservation_id' })
-  reservation: Reservation;
+  reservation?: Reservation;
 
-  @OneToOne(() => RoomBooking, (booking) => booking.payment)
+  @OneToOne(() => RoomBooking, (roomBooking) => roomBooking.payment, { nullable: true })
   @JoinColumn({ name: 'room_booking_id' })
-  roomBooking: RoomBooking;
+  roomBooking?: RoomBooking;
 
   @OneToMany(() => Invoice, (invoice) => invoice.payment)
   invoices: Invoice[];
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  // ------------------------
+  // GETTERS
+  // ------------------------
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  get userId(): number {
+    return this.user_id;
+  }
+
+  get orderId(): number | undefined {
+    return this.order?.id;
+  }
+
+  get reservationId(): number | undefined {
+    return this.reservation?.id;
+  }
+
+  get roomBookingId(): number | undefined {
+    return this.roomBooking?.id;
+  }
+
+  get reference(): string {
+    return this.payment_reference;
+  }
+
+  get paidAt(): Date | undefined {
+    return this.paid_at;
+  }
+
+  get createdAt(): Date {
+    return this.created_at;
+  }
+
+  get gatewayResponse(): any {
+    return this.gateway_response;
+  }
 }

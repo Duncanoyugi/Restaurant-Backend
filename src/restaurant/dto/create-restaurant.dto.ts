@@ -71,11 +71,11 @@ export class CreateRestaurantDto {
   @IsOptional()
   active?: boolean;
 
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  ownerId: string;
+  ownerId: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  cityId: string;
+  cityId: number;
 }

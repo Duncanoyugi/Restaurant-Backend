@@ -7,7 +7,6 @@ import {
   Param,
   Delete,
   Query,
-  ParseUUIDPipe,
   ParseIntPipe,
   DefaultValuePipe,
   UseInterceptors,
@@ -80,8 +79,8 @@ export class RoomController {
   @ApiOperation({ summary: 'Get room by ID' })
   @ApiResponse({ status: 200, description: 'Room retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Room not found' })
-  @ApiParam({ name: 'id', description: 'Room ID', type: String })
-  findRoomById(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'Room ID', type: Number })
+  findRoomById(@Param('id', ParseIntPipe) id: number) {
     return this.roomService.findRoomById(id);
   }
 
@@ -93,7 +92,7 @@ export class RoomController {
   @ApiParam({ name: 'id', description: 'Room ID', type: String })
   @ApiBody({ type: UpdateRoomDto })
   updateRoom(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateRoomDto: UpdateRoomDto
   ) {
     return this.roomService.updateRoom(id, updateRoomDto);
@@ -104,8 +103,8 @@ export class RoomController {
   @ApiOperation({ summary: 'Delete room by ID' })
   @ApiResponse({ status: 200, description: 'Room deleted successfully' })
   @ApiResponse({ status: 404, description: 'Room not found' })
-  @ApiParam({ name: 'id', description: 'Room ID', type: String })
-  removeRoom(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'Room ID', type: Number })
+  removeRoom(@Param('id', ParseIntPipe) id: number) {
     return this.roomService.removeRoom(id);
   }
 
@@ -134,8 +133,8 @@ export class RoomController {
   @ApiOperation({ summary: 'Get booking by ID' })
   @ApiResponse({ status: 200, description: 'Booking retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Booking not found' })
-  @ApiParam({ name: 'id', description: 'Booking ID', type: String })
-  findBookingById(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'Booking ID', type: Number })
+  findBookingById(@Param('id', ParseIntPipe) id: number) {
     return this.roomService.findBookingById(id);
   }
 
@@ -157,7 +156,7 @@ export class RoomController {
   @ApiParam({ name: 'id', description: 'Booking ID', type: String })
   @ApiBody({ type: UpdateRoomBookingDto })
   updateBooking(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateBookingDto: UpdateRoomBookingDto
   ) {
     return this.roomService.updateBooking(id, updateBookingDto);
@@ -171,7 +170,7 @@ export class RoomController {
   @ApiParam({ name: 'id', description: 'Booking ID', type: String })
   @ApiBody({ type: BookingStatusDto })
   updateBookingStatus(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() statusDto: BookingStatusDto
   ) {
     return this.roomService.updateBookingStatus(id, statusDto);
@@ -197,7 +196,7 @@ export class RoomController {
     }
   })
   cancelBooking(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body('performedBy') performedBy?: string
   ) {
     return this.roomService.cancelBooking(id, performedBy);
@@ -224,7 +223,7 @@ export class RoomController {
   @ApiQuery({ name: 'startDate', description: 'Start date (YYYY-MM-DD)', required: true })
   @ApiQuery({ name: 'endDate', description: 'End date (YYYY-MM-DD)', required: true })
   getRoomOccupancy(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string
   ) {
@@ -239,7 +238,7 @@ export class RoomController {
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
   @ApiQuery({ name: 'days', description: 'Days to look ahead', required: false, type: Number })
   getUpcomingCheckIns(
-    @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
     @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number
   ) {
     return this.roomService.getUpcomingCheckIns(restaurantId, days);
@@ -253,7 +252,7 @@ export class RoomController {
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
   @ApiQuery({ name: 'days', description: 'Days to look ahead', required: false, type: Number })
   getUpcomingCheckOuts(
-    @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
     @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number
   ) {
     return this.roomService.getUpcomingCheckOuts(restaurantId, days);

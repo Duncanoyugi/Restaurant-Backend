@@ -16,14 +16,14 @@ import { StockTransaction } from './stock-transaction.entity';
 @Entity('inventory_item')
 @Index(['restaurantId', 'category'])
 export class InventoryItem {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'restaurant_id' })
-  restaurantId: string;
+  @Column({ name: 'restaurant_id' })
+  restaurantId: number;
 
-  @Column({ type: 'uuid', name: 'supplier_id' })
-  supplierId: string;
+  @Column({ name: 'supplier_id' })
+  supplierId: number;
 
   @Column({ type: 'varchar', length: 200 })
   name: string;

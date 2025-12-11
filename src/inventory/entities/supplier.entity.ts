@@ -10,8 +10,8 @@ import { InventoryItem } from './inventory.entity';
 
 @Entity('supplier')
 export class Supplier {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'varchar', length: 200 })
   name: string;

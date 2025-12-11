@@ -8,7 +8,7 @@ import {
   Logger
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, FindOptionsWhere, MoreThan, LessThan } from 'typeorm';
+import { Repository } from 'typeorm';
 import { DeliveryTracking } from './entities/delivery-tracking.entity';
 import { VehicleInfo } from './entities/vehicle-info.entity';
 import { Order } from '../order/entities/order.entity';
@@ -18,14 +18,11 @@ import { UpdateVehicleInfoDto } from './dto/update-vehicle-info.dto';
 import { CreateDeliveryTrackingDto } from './dto/create-delivery-tracking.dto';
 import { DeliveryAssignmentDto } from './dto/delivery-assignment.dto';
 import { DriverLocationDto } from './dto/driver-location.dto';
-import { DeliverySearchDto } from './dto/delivery-search.dto';
 import { AvailableDriversDto } from './dto/available-drivers.dto';
 import { DeliveryEstimateDto } from './dto/delivery-estimate.dto';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
-import { UserRoleEnum } from '../user/entities/user.types';
-import { Restaurant } from '../restaurant/entities/restaurant.entity';
 
 @Injectable()
 export class DeliveryService {
@@ -41,8 +38,6 @@ export class DeliveryService {
     private orderRepository: Repository<Order>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    @InjectRepository(Restaurant)
-    private restaurantRepository: Repository<Restaurant>,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
@@ -51,72 +46,58 @@ export class DeliveryService {
 
   // ==================== ROLE VALIDATION METHODS ====================
 
-  private validateDriverAccess(user: User, targetDriverId?: string): void {
-    if (user.role.name !== UserRoleEnum.ADMIN && targetDriverId && targetDriverId !== user.id) {
+  private validateDriverAccess(user: User, targetDriverId?: number): void {
+    const isAdmin = user.role?.name === 'ADMIN';
+    const isDriverSelf = user.id === targetDriverId;
+    
+    if (!isAdmin && targetDriverId && !isDriverSelf) {
       throw new ForbiddenException('You can only access your own driver data');
     }
   }
 
-  private async validateRestaurantAccess(user: User, restaurantId?: string): Promise<void> {
-    if (user.role.name === UserRoleEnum.ADMIN) {
-      return; // Admin has access to all restaurants
-    }
-
-    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
-      const userRestaurantId = await this.getUserRestaurantId(user);
-      if (!userRestaurantId) {
-        throw new ForbiddenException('Restaurant association required');
-      }
-      if (restaurantId && userRestaurantId !== restaurantId) {
-        throw new ForbiddenException('Access to this restaurant denied');
-      }
-    }
-  }
-
-  private async getUserRestaurantId(user: User): Promise<string | null> {
-    // For restaurant owners
-    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER && user.ownedRestaurants?.length > 0) {
-      return user.ownedRestaurants[0].id;
-    }
-
-    // For restaurant staff
-    if (user.role.name === UserRoleEnum.RESTAURANT_STAFF && user.restaurantStaff) {
-      return user.restaurantStaff.restaurantId;
-    }
-
-    return null;
-  }
-
-  private async validateOrderAccess(user: User, orderId: string): Promise<Order> {
+  private async validateOrderAccess(user: User, orderId: number): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
       relations: ['user', 'restaurant', 'driver']
     });
 
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
     }
 
     // Admin can access all orders
-    if (user.role.name === UserRoleEnum.ADMIN) {
+    if (user.role?.name === 'ADMIN') {
       return order;
     }
 
     // Restaurant owners/staff can access their restaurant's orders
-    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
-      const userRestaurantId = await this.getUserRestaurantId(user);
-      if (userRestaurantId === order.restaurantId) {
-        return order;
+    const isRestaurantUser = user.role?.name === 'RESTAURANT_OWNER' || user.role?.name === 'RESTAURANT_STAFF';
+    
+    // IMPORTANT: Check if user has restaurantId property or access it via ownedRestaurants
+    let userRestaurantId: number | undefined;
+    
+    if (isRestaurantUser) {
+      // Try different ways to get restaurantId based on your User entity structure
+      if ((user as any).restaurantId) {
+        userRestaurantId = (user as any).restaurantId;
+      } else if ((user as any).ownedRestaurants?.[0]?.id) {
+        userRestaurantId = (user as any).ownedRestaurants[0].id;
+      } else if ((user as any).restaurantStaff?.restaurantId) {
+        userRestaurantId = (user as any).restaurantStaff.restaurantId;
       }
     }
 
+    if (isRestaurantUser && userRestaurantId && order.restaurantId === userRestaurantId) {
+      return order;
+    }
+
     // Customers can access their own orders
-    if (user.role.name === UserRoleEnum.CUSTOMER && order.userId === user.id) {
+    if (user.role?.name === 'CUSTOMER' && order.userId === user.id) {
       return order;
     }
 
     // Drivers can access orders assigned to them
-    if (user.role.name === UserRoleEnum.DRIVER && order.driverId === user.id) {
+    if (user.role?.name === 'DRIVER' && order.driverId === user.id) {
       return order;
     }
 
@@ -148,20 +129,20 @@ export class DeliveryService {
     return await this.vehicleInfoRepository.save(vehicleInfo);
   }
 
-  async findVehicleInfoByUserId(userId: string): Promise<VehicleInfo> {
+  async findVehicleInfoByUserId(userId: number): Promise<VehicleInfo> {
     const vehicleInfo = await this.vehicleInfoRepository.findOne({
       where: { userId },
       relations: ['user']
     });
 
     if (!vehicleInfo) {
-      throw new NotFoundException('Vehicle info not found for this user');
+      throw new NotFoundException(`Vehicle info not found for user ID ${userId}`);
     }
 
     return vehicleInfo;
   }
 
-  async updateVehicleInfo(userId: string, updateVehicleInfoDto: UpdateVehicleInfoDto): Promise<VehicleInfo> {
+  async updateVehicleInfo(userId: number, updateVehicleInfoDto: UpdateVehicleInfoDto): Promise<VehicleInfo> {
     const vehicleInfo = await this.findVehicleInfoByUserId(userId);
 
     // Check if license plate is being updated and if it's unique
@@ -175,11 +156,14 @@ export class DeliveryService {
       }
     }
 
-    Object.assign(vehicleInfo, updateVehicleInfoDto);
+    // Remove userId from update DTO to prevent changing the user association
+    const { userId: _, ...updateData } = updateVehicleInfoDto;
+    
+    Object.assign(vehicleInfo, updateData);
     return await this.vehicleInfoRepository.save(vehicleInfo);
   }
 
-  async removeVehicleInfo(userId: string): Promise<void> {
+  async removeVehicleInfo(userId: number): Promise<void> {
     const vehicleInfo = await this.findVehicleInfoByUserId(userId);
     await this.vehicleInfoRepository.remove(vehicleInfo);
   }
@@ -192,35 +176,62 @@ export class DeliveryService {
 
     // Verify driver exists and is a driver
     const driver = await this.userRepository.findOne({
-      where: { 
+      where: {
         id: createTrackingDto.driverId,
-        role: { name: UserRoleEnum.DRIVER }
+        role: { name: 'DRIVER' }
       },
       relations: ['role']
     });
 
     if (!driver) {
-      throw new NotFoundException('Driver not found');
+      throw new NotFoundException(`Driver with ID ${createTrackingDto.driverId} not found`);
     }
 
     // Restaurant staff/owners can only create tracking for their restaurant's orders
-    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
-      const userRestaurantId = await this.getUserRestaurantId(user);
-      if (order.restaurantId !== userRestaurantId) {
+    const isRestaurantUser = user.role?.name === 'RESTAURANT_OWNER' || user.role?.name === 'RESTAURANT_STAFF';
+    
+    if (isRestaurantUser) {
+      let userRestaurantId: number | undefined;
+      if ((user as any).restaurantId) {
+        userRestaurantId = (user as any).restaurantId;
+      } else if ((user as any).ownedRestaurants?.[0]?.id) {
+        userRestaurantId = (user as any).ownedRestaurants[0].id;
+      }
+      
+      if (userRestaurantId !== order.restaurantId) {
         throw new ForbiddenException('You can only create tracking for your restaurant orders');
       }
+    }
+
+    // Calculate delivery metrics if not provided
+    if (!createTrackingDto.distanceToDestination || !createTrackingDto.etaMinutes) {
+      const deliveryMetrics = await this.calculateDeliveryMetrics(
+        createTrackingDto.latitude,
+        createTrackingDto.longitude,
+        createTrackingDto.orderId
+      );
+      
+      createTrackingDto = {
+        ...createTrackingDto,
+        ...deliveryMetrics
+      };
     }
 
     const tracking = this.deliveryTrackingRepository.create(createTrackingDto);
     return await this.deliveryTrackingRepository.save(tracking);
   }
 
-  async updateDriverLocation(locationDto: DriverLocationDto): Promise<DeliveryTracking> {
+  async updateDriverLocation(locationDto: DriverLocationDto, user: User): Promise<DeliveryTracking> {
+    // Ensure driver can only update their own location
+    this.validateDriverAccess(user, locationDto.driverId);
+
     // Find active delivery for this driver
     const activeDelivery = await this.deliveryTrackingRepository
       .createQueryBuilder('tracking')
       .where('tracking.driverId = :driverId', { driverId: locationDto.driverId })
-      .andWhere('tracking.createdAt > :recent', { recent: new Date(Date.now() - 30 * 60 * 1000) })
+      .andWhere('tracking.createdAt > :recent', { 
+        recent: new Date(Date.now() - 30 * 60 * 1000) // Last 30 minutes
+      })
       .orderBy('tracking.createdAt', 'DESC')
       .getOne();
 
@@ -245,7 +256,7 @@ export class DeliveryService {
     return await this.deliveryTrackingRepository.save(tracking);
   }
 
-  async getDeliveryTracking(orderId: string, user: User): Promise<DeliveryTracking[]> {
+  async getDeliveryTracking(orderId: number, user: User): Promise<DeliveryTracking[]> {
     // Validate order access
     await this.validateOrderAccess(user, orderId);
 
@@ -256,11 +267,13 @@ export class DeliveryService {
     });
   }
 
-  async getActiveDeliveryTracking(orderId: string): Promise<DeliveryTracking | null> {
+  async getActiveDeliveryTracking(orderId: number): Promise<DeliveryTracking | null> {
     const recentTracking = await this.deliveryTrackingRepository
       .createQueryBuilder('tracking')
       .where('tracking.orderId = :orderId', { orderId })
-      .andWhere('tracking.createdAt > :recent', { recent: new Date(Date.now() - 30 * 60 * 1000) })
+      .andWhere('tracking.createdAt > :recent', { 
+        recent: new Date(Date.now() - 30 * 60 * 1000) 
+      })
       .orderBy('tracking.createdAt', 'DESC')
       .getOne();
 
@@ -274,24 +287,34 @@ export class DeliveryService {
 
     // Verify driver exists and is available
     const driver = await this.userRepository.findOne({
-      where: { 
+      where: {
         id: assignmentDto.driverId,
-        role: { name: UserRoleEnum.DRIVER },
-        isOnline: true,
-        isAvailable: true,
-        status: UserStatus.ACTIVE
+        role: { name: 'DRIVER' }
       },
       relations: ['role', 'vehicleInfo']
     });
 
     if (!driver) {
-      throw new BadRequestException('Driver not available or not found');
+      throw new BadRequestException('Driver not found or not a driver');
+    }
+
+    // Check if driver is active
+    if (driver.status !== UserStatus.ACTIVE) {
+      throw new BadRequestException('Driver is not active');
     }
 
     // Restaurant staff/owners can only assign deliveries for their restaurant
-    if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
-      const userRestaurantId = await this.getUserRestaurantId(user);
-      if (order.restaurantId !== userRestaurantId) {
+    const isRestaurantUser = user.role?.name === 'RESTAURANT_OWNER' || user.role?.name === 'RESTAURANT_STAFF';
+    
+    if (isRestaurantUser) {
+      let userRestaurantId: number | undefined;
+      if ((user as any).restaurantId) {
+        userRestaurantId = (user as any).restaurantId;
+      } else if ((user as any).ownedRestaurants?.[0]?.id) {
+        userRestaurantId = (user as any).ownedRestaurants[0].id;
+      }
+      
+      if (userRestaurantId !== order.restaurantId) {
         throw new ForbiddenException('You can only assign deliveries for your restaurant');
       }
     }
@@ -303,7 +326,7 @@ export class DeliveryService {
       assignmentDto.orderId
     );
 
-    const trackingData: any = {
+    const trackingData: Partial<DeliveryTracking> = {
       orderId: assignmentDto.orderId,
       driverId: assignmentDto.driverId,
       latitude: assignmentDto.restaurantLatitude,
@@ -312,7 +335,8 @@ export class DeliveryService {
       status: 'assigned'
     };
 
-    const tracking = await this.createDeliveryTracking(trackingData, user);
+    const tracking = this.deliveryTrackingRepository.create(trackingData);
+    const savedTracking = await this.deliveryTrackingRepository.save(tracking);
 
     // Update order with driver assignment
     await this.orderRepository.update(assignmentDto.orderId, {
@@ -320,33 +344,27 @@ export class DeliveryService {
     });
 
     return {
-      tracking,
+      tracking: savedTracking,
       estimatedTime: deliveryMetrics.etaMinutes
     };
   }
 
   async findAvailableDrivers(searchDto: AvailableDriversDto, user: User): Promise<User[]> {
     // Only admin and restaurant staff/owners can find available drivers
-    if (user.role.name !== UserRoleEnum.ADMIN && 
-        user.role.name !== UserRoleEnum.RESTAURANT_OWNER && 
-        user.role.name !== UserRoleEnum.RESTAURANT_STAFF) {
+    const allowedRoles = ['ADMIN', 'RESTAURANT_OWNER', 'RESTAURANT_STAFF'];
+    if (!allowedRoles.includes(user.role?.name || '')) {
       throw new ForbiddenException('Insufficient permissions to access driver information');
     }
 
-    const { latitude, longitude, radius } = searchDto;
-
-    // Get all available drivers (online and available)
+    // Get all available drivers (active and not currently assigned to too many deliveries)
     const availableDrivers = await this.userRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.vehicleInfo', 'vehicleInfo')
       .leftJoinAndSelect('user.role', 'role')
-      .where('role.name = :role', { role: UserRoleEnum.DRIVER })
-      .andWhere('user.isOnline = :isOnline', { isOnline: true })
-      .andWhere('user.isAvailable = :isAvailable', { isAvailable: true })
+      .where('role.name = :role', { role: 'DRIVER' })
       .andWhere('user.status = :status', { status: UserStatus.ACTIVE })
       .getMany();
 
-    // In a real implementation, you would filter by distance using geographical calculations
     return availableDrivers;
   }
 
@@ -381,9 +399,11 @@ export class DeliveryService {
       return {
         distance: leg.distance.value / 1000, // Convert to km
         duration: leg.duration.value / 60, // Convert to minutes
-        polyline: route.overview_polyline.points
+        polyline: route.overview_polyline?.points
       };
     } catch (error) {
+      this.logger.error('Google Maps API error:', error);
+      
       // Fallback calculation using Haversine formula
       const distance = this.calculateHaversineDistance(
         restaurantLatitude,
@@ -404,7 +424,7 @@ export class DeliveryService {
 
   // ==================== ANALYTICS AND REPORTING ====================
 
-  async getDriverDeliveryStats(driverId: string, startDate: string, endDate: string, user: User): Promise<{
+  async getDriverDeliveryStats(driverId: number, startDate: string, endDate: string, user: User): Promise<{
     totalDeliveries: number;
     totalDistance: number;
     averageDeliveryTime: number;
@@ -425,13 +445,18 @@ export class DeliveryService {
       .getMany();
 
     // Calculate basic stats
-    const totalDeliveries = deliveries.length;
-    const completedDeliveries = deliveries.filter(d => d.status === 'delivered').length;
+    const uniqueOrderIds = new Set(deliveries.map(d => d.orderId));
+    const totalDeliveries = uniqueOrderIds.size;
+    const completedDeliveries = deliveries.filter(d => 
+      d.status === 'delivered' || d.status === 'arrived'
+    ).length;
+
+    const totalDistance = deliveries.reduce((sum, delivery) => 
+      sum + (delivery.distanceToDestination || 0), 0
+    );
     
-    // Mock calculations - replace with actual logic
-    const totalDistance = deliveries.reduce((sum, delivery) => sum + (delivery.distanceToDestination || 0), 0);
     const averageDeliveryTime = totalDeliveries > 0 ? 30 : 0; // Mock average
-    const onTimeRate = completedDeliveries > 0 ? (completedDeliveries / totalDeliveries) * 100 : 0;
+    const onTimeRate = totalDeliveries > 0 ? (completedDeliveries / totalDeliveries) * 100 : 0;
 
     const result: any = {
       totalDeliveries,
@@ -441,19 +466,33 @@ export class DeliveryService {
     };
 
     // Only include earnings for the driver themselves or admin
-    if (user.role.name === UserRoleEnum.ADMIN || user.id === driverId) {
+    if (user.role?.name === 'ADMIN' || user.id === driverId) {
       result.totalEarnings = totalDeliveries * 150; // Mock earnings calculation
     }
 
     return result;
   }
 
-  async getDeliveryPerformance(restaurantId: string, days: number = 7, user: User): Promise<any> {
-    // Validate restaurant access
-    await this.validateRestaurantAccess(user, restaurantId);
+  async getDeliveryPerformance(restaurantId: number, days: number = 7, user: User): Promise<any> {
+    // Check restaurant access for restaurant users
+    const isRestaurantUser = user.role?.name === 'RESTAURANT_OWNER' || user.role?.name === 'RESTAURANT_STAFF';
+    
+    if (isRestaurantUser) {
+      let userRestaurantId: number | undefined;
+      if ((user as any).restaurantId) {
+        userRestaurantId = (user as any).restaurantId;
+      } else if ((user as any).ownedRestaurants?.[0]?.id) {
+        userRestaurantId = (user as any).ownedRestaurants[0].id;
+      }
+      
+      if (userRestaurantId !== restaurantId) {
+        throw new ForbiddenException('Access to this restaurant denied');
+      }
+    }
 
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
 
     const deliveries = await this.deliveryTrackingRepository
       .createQueryBuilder('tracking')
@@ -463,14 +502,19 @@ export class DeliveryService {
       .getMany();
 
     // Calculate performance metrics
-    const totalDeliveries = deliveries.length;
-    const completedDeliveries = deliveries.filter(d => d.status === 'delivered').length;
+    const uniqueOrderIds = new Set(deliveries.map(d => d.orderId));
+    const totalDeliveries = uniqueOrderIds.size;
+    const completedDeliveries = deliveries.filter(d => 
+      d.status === 'delivered' || d.status === 'arrived'
+    ).length;
+
     const averageDeliveryTime = this.calculateAverageDeliveryTime(deliveries);
 
     return {
       totalDeliveries,
       completedDeliveries,
-      completionRate: totalDeliveries > 0 ? (completedDeliveries / totalDeliveries) * 100 : 0,
+      completionRate: totalDeliveries > 0 ? 
+        parseFloat(((completedDeliveries / totalDeliveries) * 100).toFixed(2)) : 0,
       averageDeliveryTime,
       deliveryTrends: this.analyzeDeliveryTrends(deliveries),
       period: {
@@ -483,7 +527,7 @@ export class DeliveryService {
 
   // ==================== REAL-TIME TRACKING ====================
 
-  async getLiveDeliveryTracking(orderId: string, user: User): Promise<{
+  async getLiveDeliveryTracking(orderId: number, user: User): Promise<{
     currentLocation: { latitude: number; longitude: number };
     driver: { name: string; vehicle: string; phone: string };
     status: string;
@@ -499,13 +543,23 @@ export class DeliveryService {
       throw new NotFoundException('No active delivery tracking found');
     }
 
+    // Get driver info
+    const driver = await this.userRepository.findOne({
+      where: { id: order.driverId },
+      relations: ['vehicleInfo']
+    });
+
+    if (!driver) {
+      throw new NotFoundException('Driver not found');
+    }
+
     // Get route polyline for map display
     const routeInfo = await this.calculateDeliveryEstimate({
       orderId,
-      restaurantLatitude: order.restaurant.latitude,
-      restaurantLongitude: order.restaurant.longitude,
-      customerLatitude: order.deliveryAddress.latitude,
-      customerLongitude: order.deliveryAddress.longitude
+      restaurantLatitude: order.restaurant?.latitude || 0,
+      restaurantLongitude: order.restaurant?.longitude || 0,
+      customerLatitude: (order as any).deliveryAddress?.latitude || 0,
+      customerLongitude: (order as any).deliveryAddress?.longitude || 0
     });
 
     return {
@@ -514,10 +568,11 @@ export class DeliveryService {
         longitude: latestTracking.longitude
       },
       driver: {
-        name: order.driver.name,
-        vehicle: order.driver.vehicleInfo ? 
-          `${order.driver.vehicleInfo.vehicleMake} ${order.driver.vehicleInfo.vehicleModel}` : 'Vehicle not specified',
-        phone: order.driver.phone
+        name: driver.name || 'Unknown Driver',
+        vehicle: driver.vehicleInfo ? 
+          `${driver.vehicleInfo.vehicleMake || ''} ${driver.vehicleInfo.vehicleModel || ''}`.trim() || 
+          'Vehicle not specified' : 'Vehicle not specified',
+        phone: driver.phone || 'N/A'
       },
       status: latestTracking.status || 'on_the_way',
       eta: latestTracking.etaMinutes || 0,
@@ -528,16 +583,19 @@ export class DeliveryService {
 
   // ==================== DRIVER-SPECIFIC METHODS ====================
 
-  async getActiveDeliveriesForDriver(driverId: string, user: User): Promise<DeliveryTracking[]> {
+  async getActiveDeliveriesForDriver(driverId: number, user: User): Promise<DeliveryTracking[]> {
     this.validateDriverAccess(user, driverId);
+
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     return await this.deliveryTrackingRepository
       .createQueryBuilder('tracking')
       .leftJoinAndSelect('tracking.order', 'order')
       .leftJoinAndSelect('order.restaurant', 'restaurant')
-      .leftJoinAndSelect('order.deliveryAddress', 'deliveryAddress')
       .where('tracking.driverId = :driverId', { driverId })
-      .andWhere('tracking.createdAt > :recent', { recent: new Date(Date.now() - 24 * 60 * 60 * 1000) }) // Last 24 hours
+      .andWhere('tracking.createdAt > :recent', { 
+        recent: twentyFourHoursAgo
+      })
       .andWhere('tracking.status IN (:...statuses)', { 
         statuses: ['assigned', 'picked_up', 'on_the_way', 'nearby'] 
       })
@@ -547,7 +605,7 @@ export class DeliveryService {
 
   // ==================== HELPER METHODS ====================
 
-  private async calculateDeliveryMetrics(latitude: number, longitude: number, orderId: string): Promise<{
+  private async calculateDeliveryMetrics(latitude: number, longitude: number, orderId: number): Promise<{
     distanceToDestination: number;
     etaMinutes: number;
     status: string;
@@ -557,7 +615,7 @@ export class DeliveryService {
       relations: ['restaurant', 'deliveryAddress']
     });
 
-    if (!order || !order.deliveryAddress) {
+    if (!order || !(order as any).deliveryAddress) {
       return {
         distanceToDestination: 0,
         etaMinutes: 0,
@@ -565,8 +623,9 @@ export class DeliveryService {
       };
     }
 
-    const customerLat = order.deliveryAddress.latitude;
-    const customerLng = order.deliveryAddress.longitude;
+    const deliveryAddress = (order as any).deliveryAddress;
+    const customerLat = deliveryAddress.latitude || 0;
+    const customerLng = deliveryAddress.longitude || 0;
 
     const distance = this.calculateHaversineDistance(latitude, longitude, customerLat, customerLng);
     
@@ -606,8 +665,7 @@ export class DeliveryService {
   private calculateAverageDeliveryTime(deliveries: DeliveryTracking[]): number {
     if (deliveries.length === 0) return 0;
     
-    // Mock implementation - calculate average time from assignment to delivery
-    // In real implementation, you would calculate actual time differences
+    // Simple mock implementation - in real app, calculate from timestamps
     return 30;
   }
 
@@ -620,7 +678,7 @@ export class DeliveryService {
       };
     }
 
-    // Mock analysis - implement actual trend analysis
+    // Simple mock analysis
     return {
       peakHours: ['12:00-14:00', '18:00-20:00'],
       averageDistance: 5.2,

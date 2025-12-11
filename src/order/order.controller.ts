@@ -15,7 +15,8 @@ import {
   ClassSerializerInterceptor,
   UseGuards,
   Request,
-  ForbiddenException
+  ForbiddenException,
+  NotFoundException
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -86,8 +87,8 @@ export class OrderController {
   @ApiResponse({ status: 200, description: 'Order retrieved successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this order' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  @ApiParam({ name: 'id', description: 'Order ID', type: String })
-  findOrderById(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Order ID', type: Number })
+  findOrderById(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.orderService.findOrderById(id, req.user);
   }
 
@@ -106,10 +107,10 @@ export class OrderController {
   @ApiResponse({ status: 200, description: 'Order updated successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot update this order' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  @ApiParam({ name: 'id', description: 'Order ID', type: String })
+  @ApiParam({ name: 'id', description: 'Order ID', type: Number })
   @ApiBody({ type: UpdateOrderDto })
   updateOrder(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateOrderDto: UpdateOrderDto,
     @Request() req
   ) {
@@ -121,8 +122,8 @@ export class OrderController {
   @ApiResponse({ status: 200, description: 'Order deleted successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot delete this order' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  @ApiParam({ name: 'id', description: 'Order ID', type: String })
-  removeOrder(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Order ID', type: Number })
+  removeOrder(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.orderService.removeOrder(id, req.user);
   }
 
@@ -134,10 +135,10 @@ export class OrderController {
   @ApiResponse({ status: 200, description: 'Order status updated successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin, Restaurant Owner, Staff or Driver access required' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  @ApiParam({ name: 'id', description: 'Order ID', type: String })
+  @ApiParam({ name: 'id', description: 'Order ID', type: Number })
   @ApiBody({ type: OrderStatusDto })
   updateOrderStatus(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() statusDto: OrderStatusDto,
     @Request() req
   ) {
@@ -149,8 +150,8 @@ export class OrderController {
   @ApiResponse({ status: 200, description: 'Status history retrieved successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this order' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  @ApiParam({ name: 'id', description: 'Order ID', type: String })
-  getOrderStatusHistory(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Order ID', type: Number })
+  getOrderStatusHistory(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.orderService.getOrderStatusHistory(id, req.user);
   }
 
@@ -162,10 +163,10 @@ export class OrderController {
   @ApiResponse({ status: 200, description: 'Driver assigned successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin, Restaurant Owner or Staff access required' })
   @ApiResponse({ status: 404, description: 'Order or driver not found' })
-  @ApiParam({ name: 'id', description: 'Order ID', type: String })
+  @ApiParam({ name: 'id', description: 'Order ID', type: Number })
   @ApiBody({ type: AssignDriverDto })
   assignDriver(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() assignDriverDto: AssignDriverDto,
     @Request() req
   ) {
@@ -214,8 +215,8 @@ export class OrderController {
   @ApiResponse({ status: 200, description: 'Todays orders retrieved successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin, Restaurant Owner or Staff access required' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getRestaurantOrdersToday(@Param('restaurantId', ParseUUIDPipe) restaurantId: string, @Request() req) {
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
+  getRestaurantOrdersToday(@Param('restaurantId', ParseIntPipe) restaurantId: number, @Request() req) {
     return this.orderService.getRestaurantOrdersToday(restaurantId, req.user);
   }
 
@@ -226,6 +227,21 @@ export class OrderController {
   getMyOrders(@Request() req) {
     const searchDto: OrderSearchDto = { userId: req.user.id };
     return this.orderService.findAllOrders(searchDto, req.user);
+  }
+
+  @Post('user/my-orders/:orderId/cancel')
+  @ApiOperation({ summary: 'Cancel a user order' })
+  @ApiResponse({ status: 200, description: 'Order cancelled successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Cannot cancel this order' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  @ApiParam({ name: 'orderId', description: 'Order ID', type: Number })
+  async cancelMyOrder(
+    @Param('orderId', ParseIntPipe) orderId: number,
+    @Body('reason') reason: string,
+    @Request() req
+  ) {
+    // Use the specialized service method for customer order cancellation
+    return this.orderService.cancelCustomerOrder(orderId, reason, req.user);
   }
 
   @Get('driver/my-deliveries')

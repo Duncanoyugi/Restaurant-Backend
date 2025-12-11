@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsUUID, Length } from 'class-validator';
+import { IsString, IsNotEmpty, Length, IsInt } from 'class-validator';
 
 export class CreateStateDto {
   @IsString()
@@ -10,7 +10,7 @@ export class CreateStateDto {
   @Length(2, 10)
   code: string;
 
-  @IsUUID()
+  @IsInt()
   @IsNotEmpty()
-  countryId: string;
+  countryId: number;  // Changed from string/UUID to number
 }

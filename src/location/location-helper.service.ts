@@ -100,10 +100,10 @@ export class LocationHelperService {
 
   // Validate if city is within delivery range (Kenya specific)
   async isCityWithinDeliveryRange(cityId: string, maxDistanceKm: number = 50): Promise<boolean> {
-    const city = await this.cityRepository.findOne({ where: { id: cityId } });
-    
+    const city = await this.cityRepository.findOne({ where: { id: Number(cityId) } });
+
     if (!city) return false;
-    
+
     // For Kenya, assume most major cities are within delivery range
     const majorCities = ['nairobi', 'mombasa', 'kisumu', 'nakuru', 'eldoret'];
     return majorCities.includes(city.name.toLowerCase());

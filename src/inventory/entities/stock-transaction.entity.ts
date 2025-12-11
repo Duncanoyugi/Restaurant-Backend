@@ -19,11 +19,11 @@ export enum TransactionType {
 @Entity('stock_transaction')
 @Index(['inventoryItemId', 'createdAt'])
 export class StockTransaction {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'inventory_item_id' })
-  inventoryItemId: string;
+  @Column({ name: 'inventory_item_id' })
+  inventoryItemId: number;
 
   @Column({ type: 'int', name: 'quantity_change' })
   quantityChange: number;
@@ -38,8 +38,8 @@ export class StockTransaction {
   @Column({ type: 'varchar', length: 255, nullable: true })
   reason: string;
 
-  @Column({ type: 'uuid', nullable: true, name: 'performed_by' })
-  performedBy: string;
+  @Column({ nullable: true, name: 'performed_by' })
+  performedBy: number;
 
   @ManyToOne(() => InventoryItem, (item) => item.transactions)
   @JoinColumn({ name: 'inventory_item_id' })

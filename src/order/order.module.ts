@@ -7,6 +7,7 @@ import { OrderItem } from './entities/order-item.entity';
 import { OrderStatus } from './entities/order-status.entity';
 import { StatusCatalog } from './entities/status-catalog.entity';
 import { RestaurantModule } from '../restaurant/restaurant.module';
+import { StatusCatalogSeeder } from './status-catalog.seed';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { RestaurantModule } from '../restaurant/restaurant.module';
     RestaurantModule, // This provides RestaurantRepository
   ],
   controllers: [OrderController],
-  providers: [OrderService],
+  providers: [OrderService, StatusCatalogSeeder],
   exports: [OrderService, TypeOrmModule],
 })
 export class OrderModule {}

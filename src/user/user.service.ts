@@ -112,11 +112,11 @@ export class UserService {
   // -----------------------------------------------------
   // FIND USER BY ID
   // -----------------------------------------------------
-  async findById(id: string): Promise<User | null> {
+  async findById(id: number): Promise<User | null> {
     return this.userRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.role', 'role')
-      .where('user.id = :id', { id })
+      .where('user.id = :id', { id: String(id) })
       .andWhere('user.deleted_at IS NULL')
       .getOne();
   }
@@ -154,7 +154,7 @@ export class UserService {
   // -----------------------------------------------------
   // UPDATE USER
   // -----------------------------------------------------
-  async update(id: string, dto: UpdateUserDto): Promise<User> {
+  async update(id: number, dto: UpdateUserDto): Promise<User> {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException(`User with id ${id} not found`);
 
@@ -163,9 +163,9 @@ export class UserService {
       dto.password = await bcrypt.hash(dto.password, 10);
     }
 
-    await this.userRepository.update(id, dto);
+    await this.userRepository.update(String(id), dto);
 
-    const updatedUser = await this.findById(id);
+    const updatedUser = await this.findById(Number(id));
     if (!updatedUser) throw new NotFoundException(`User with id ${id} not found after update`);
 
     return updatedUser;
@@ -174,10 +174,10 @@ export class UserService {
   // -----------------------------------------------------
   // DELETE USER
   // -----------------------------------------------------
-  async remove(id: string): Promise<void> {
+  async remove(id: number): Promise<void> {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException(`User with id ${id} not found`);
 
-    await this.userRepository.delete(id);
+    await this.userRepository.delete(String(id));
   }
 }

@@ -1,17 +1,17 @@
 import { 
   IsString, 
   IsNotEmpty, 
-  IsUUID, 
   IsNumber, 
   IsOptional, 
-  IsEnum 
+  IsEnum,
+  IsInt 
 } from 'class-validator';
 import { TransactionType } from '../entities/stock-transaction.entity';
 
 export class CreateStockTransactionDto {
-  @IsUUID()
+  @IsInt()
   @IsNotEmpty()
-  inventoryItemId: string;
+  inventoryItemId: number;  // Changed from string/UUID to number
 
   @IsNumber()
   @IsNotEmpty()
@@ -29,7 +29,7 @@ export class CreateStockTransactionDto {
   @IsOptional()
   reason?: string;
 
-  @IsUUID()
+  @IsInt()
   @IsOptional()
-  performedBy?: string;
+  performedBy?: number;    // Changed from string/UUID to number
 }

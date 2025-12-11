@@ -75,8 +75,8 @@ export class MenuController {
   @ApiOperation({ summary: 'Get menu category by ID' })
   @ApiResponse({ status: 200, description: 'Category retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Category not found' })
-  @ApiParam({ name: 'id', description: 'Category ID', type: String })
-  findCategoryById(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'Category ID', type: Number })
+  findCategoryById(@Param('id', ParseIntPipe) id: number) {
     return this.menuService.findCategoryById(id);
   }
 
@@ -87,10 +87,10 @@ export class MenuController {
   @ApiResponse({ status: 200, description: 'Category updated successfully' })
   @ApiResponse({ status: 404, description: 'Category not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
-  @ApiParam({ name: 'id', description: 'Category ID', type: String })
+  @ApiParam({ name: 'id', description: 'Category ID', type: Number })
   @ApiBody({ type: UpdateCategoryDto })
   updateCategory(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateCategoryDto: UpdateCategoryDto,
     @Request() req
   ) {
@@ -104,8 +104,8 @@ export class MenuController {
   @ApiResponse({ status: 200, description: 'Category deleted successfully' })
   @ApiResponse({ status: 404, description: 'Category not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
-  @ApiParam({ name: 'id', description: 'Category ID', type: String })
-  removeCategory(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Category ID', type: Number })
+  removeCategory(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.menuService.removeCategory(id, req.user);
   }
 
@@ -148,8 +148,8 @@ export class MenuController {
   @ApiOperation({ summary: 'Get menu item by ID' })
   @ApiResponse({ status: 200, description: 'Menu item retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
-  @ApiParam({ name: 'id', description: 'Menu item ID', type: String })
-  findMenuItemById(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'Menu item ID', type: Number })
+  findMenuItemById(@Param('id', ParseIntPipe) id: number) {
     return this.menuService.findMenuItemById(id);
   }
 
@@ -160,10 +160,10 @@ export class MenuController {
   @ApiResponse({ status: 200, description: 'Menu item updated successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin, Restaurant Owner or Staff access required' })
-  @ApiParam({ name: 'id', description: 'Menu item ID', type: String })
+  @ApiParam({ name: 'id', description: 'Menu item ID', type: Number })
   @ApiBody({ type: UpdateMenuItemDto })
   updateMenuItem(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateMenuItemDto: UpdateMenuItemDto,
     @Request() req
   ) {
@@ -177,8 +177,8 @@ export class MenuController {
   @ApiResponse({ status: 200, description: 'Menu item availability toggled successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin, Restaurant Owner or Staff access required' })
-  @ApiParam({ name: 'id', description: 'Menu item ID', type: String })
-  toggleMenuItemAvailability(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Menu item ID', type: Number })
+  toggleMenuItemAvailability(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.menuService.toggleMenuItemAvailability(id, req.user);
   }
 
@@ -189,8 +189,8 @@ export class MenuController {
   @ApiResponse({ status: 200, description: 'Menu item deleted successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
-  @ApiParam({ name: 'id', description: 'Menu item ID', type: String })
-  removeMenuItem(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Menu item ID', type: Number })
+  removeMenuItem(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.menuService.removeMenuItem(id, req.user);
   }
 
@@ -200,11 +200,11 @@ export class MenuController {
   @ApiOperation({ summary: 'Get restaurant menu with optional category filter' })
   @ApiResponse({ status: 200, description: 'Restaurant menu retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
   @ApiQuery({ name: 'categoryId', description: 'Category ID to filter by', required: false })
   getRestaurantMenu(
-    @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
-    @Query('categoryId') categoryId?: string
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
+    @Query('categoryId') categoryId?: number
   ) {
     return this.menuService.getRestaurantMenu(restaurantId, categoryId);
   }
@@ -214,10 +214,10 @@ export class MenuController {
   @ApiOperation({ summary: 'Get featured menu items for restaurant' })
   @ApiResponse({ status: 200, description: 'Featured items retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
   @ApiQuery({ name: 'limit', description: 'Number of featured items to return', required: false, type: Number })
   getFeaturedMenuItems(
-    @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number
   ) {
     return this.menuService.getFeaturedMenuItems(restaurantId, limit);
@@ -230,8 +230,8 @@ export class MenuController {
   @ApiResponse({ status: 200, description: 'Menu statistics retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin, Restaurant Owner or Staff access required' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getMenuStatistics(@Param('restaurantId', ParseUUIDPipe) restaurantId: string, @Request() req) {
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
+  getMenuStatistics(@Param('restaurantId', ParseIntPipe) restaurantId: number, @Request() req) {
     return this.menuService.getMenuStatistics(restaurantId, req.user);
   }
 
@@ -240,8 +240,8 @@ export class MenuController {
   @ApiOperation({ summary: 'Get menu price range for restaurant' })
   @ApiResponse({ status: 200, description: 'Price range calculated successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getMenuPriceRange(@Param('restaurantId', ParseUUIDPipe) restaurantId: string) {
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
+  getMenuPriceRange(@Param('restaurantId', ParseIntPipe) restaurantId: number) {
     return this.menuService.getMenuPriceRange(restaurantId);
   }
 
@@ -254,7 +254,7 @@ export class MenuController {
   @ApiQuery({ name: 'restaurantId', description: 'Restaurant ID to filter by', required: false })
   searchMenuItems(
     @Query('q') query: string,
-    @Query('restaurantId') restaurantId?: string
+    @Query('restaurantId', ParseIntPipe) restaurantId?: number
   ) {
     return this.menuService.searchMenuItems(query, restaurantId);
   }
@@ -264,10 +264,10 @@ export class MenuController {
   @ApiOperation({ summary: 'Filter menu items by allergens' })
   @ApiResponse({ status: 200, description: 'Filter completed successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
-  @ApiQuery({ name: 'restaurantId', description: 'Restaurant ID', required: true, type: String })
+  @ApiQuery({ name: 'restaurantId', description: 'Restaurant ID', required: true, type: Number })
   @ApiQuery({ name: 'allergens', description: 'Comma-separated list of allergens to exclude', required: true })
   getMenuItemsByAllergens(
-    @Query('restaurantId', ParseUUIDPipe) restaurantId: string,
+    @Query('restaurantId', ParseIntPipe) restaurantId: number,
     @Query('allergens') allergens: string
   ) {
     const allergensArray = allergens ? allergens.split(',') : [];

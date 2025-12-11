@@ -1,9 +1,8 @@
-import { 
-  IsString, 
-  IsNotEmpty, 
-  IsUUID, 
-  IsNumber, 
-  IsOptional, 
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
   IsEnum,
   IsArray,
   ValidateNested,
@@ -14,9 +13,9 @@ import { Type } from 'class-transformer';
 import { OrderType } from '../entities/order.entity';
 
 export class CreateOrderItemDto {
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  menuItemId: string;
+  menuItemId: number;
 
   @IsNumber()
   @Min(1)
@@ -29,21 +28,21 @@ export class CreateOrderItemDto {
 }
 
 export class CreateOrderDto {
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  restaurantId: string;
+  restaurantId: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  userId: string;
+  userId: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
-  tableId?: string;
+  tableId?: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
-  deliveryAddressId?: string;
+  deliveryAddressId?: number;
 
   @IsEnum(OrderType)
   @IsNotEmpty()

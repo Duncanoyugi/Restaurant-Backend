@@ -1,34 +1,26 @@
+// backend\src\delivery\delivery.module.ts
 import { Module } from '@nestjs/common';
-import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config'; // ADD THIS IMPORT
-import { DeliveryService } from './delivery.service';
+import { HttpModule } from '@nestjs/axios';
 import { DeliveryController } from './delivery.controller';
+import { DeliveryService } from './delivery.service';
 import { DeliveryTracking } from './entities/delivery-tracking.entity';
 import { VehicleInfo } from './entities/vehicle-info.entity';
-import { OrderModule } from '../order/order.module';
-import { UserModule } from '../user/user.module';
-import { RestaurantModule } from '../restaurant/restaurant.module';
+import { Order } from '../order/entities/order.entity';
+import { User } from '../user/entities/user.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       DeliveryTracking,
       VehicleInfo,
+      Order,
+      User
     ]),
-    OrderModule, // Provides OrderRepository
-    UserModule, // Provides UserRepository
-    RestaurantModule, // Provides RestaurantRepository
-    ConfigModule, // ADD THIS - Provides ConfigService
-    HttpModule.registerAsync({
-      useFactory: () => ({
-        timeout: 5000,
-        maxRedirects: 5,
-      }),
-    }),
+    HttpModule
   ],
   controllers: [DeliveryController],
   providers: [DeliveryService],
-  exports: [DeliveryService],
+  exports: [DeliveryService]
 })
 export class DeliveryModule {}

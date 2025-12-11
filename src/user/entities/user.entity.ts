@@ -35,8 +35,8 @@ export enum UserStatus {
 @Index(['phone'])
 @Index(['roleId'])
 export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'varchar', length: 100 })
   name: string;
@@ -72,8 +72,8 @@ export class User {
   @Column({ type: 'datetime', nullable: true, name: 'reset_token_expiry' })
   resetTokenExpiry: Date;
 
-  @Column({ type: 'uuid', name: 'role_id' })
-  roleId: string;
+  @Column({ name: 'role_id' })
+  roleId: number;
 
   // Driver-specific fields
   @Column({ type: 'bit', default: 0, name: 'is_online' })

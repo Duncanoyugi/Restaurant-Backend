@@ -11,20 +11,20 @@ import { StatusCatalog } from './status-catalog.entity';
 
 @Entity('order_status')
 export class OrderStatus {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'order_id' })
-  orderId: string;
+  @Column({ name: 'order_id' })
+  orderId: number;
 
-  @Column({ type: 'uuid', name: 'status_catalog_id' })
-  statusCatalogId: string;
+  @Column({ name: 'status_catalog_id' })
+  statusCatalogId: number;
 
   @Column({ type: 'text', nullable: true })
   notes: string;
 
-  @Column({ type: 'uuid', nullable: true, name: 'updated_by' })
-  updatedBy: string;
+  @Column({ nullable: true, name: 'updated_by' })
+  updatedBy: number;
 
   @ManyToOne(() => Order, (order) => order.statusHistory, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'order_id' })

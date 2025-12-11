@@ -75,7 +75,7 @@ export class ReservationController {
   @ApiResponse({ status: 200, description: 'Table retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Table not found' })
   @ApiParam({ name: 'id', description: 'Table ID', type: String })
-  findTableById(@Param('id', ParseUUIDPipe) id: string) {
+  findTableById(@Param('id', ParseIntPipe) id: number) {
     return this.reservationService.findTableById(id);
   }
 
@@ -89,7 +89,7 @@ export class ReservationController {
   @ApiParam({ name: 'id', description: 'Table ID', type: String })
   @ApiBody({ type: UpdateTableDto })
   updateTable(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateTableDto: UpdateTableDto,
     @Request() req
   ) {
@@ -104,7 +104,7 @@ export class ReservationController {
   @ApiResponse({ status: 403, description: 'Forbidden - Admin or Restaurant Owner access required' })
   @ApiResponse({ status: 404, description: 'Table not found' })
   @ApiParam({ name: 'id', description: 'Table ID', type: String })
-  removeTable(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  removeTable(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.reservationService.removeTable(id, req.user);
   }
 
@@ -147,7 +147,7 @@ export class ReservationController {
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this reservation' })
   @ApiResponse({ status: 404, description: 'Reservation not found' })
   @ApiParam({ name: 'id', description: 'Reservation ID', type: String })
-  findReservationById(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  findReservationById(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.reservationService.findReservationById(id, req.user);
   }
 
@@ -169,7 +169,7 @@ export class ReservationController {
   @ApiParam({ name: 'id', description: 'Reservation ID', type: String })
   @ApiBody({ type: UpdateReservationDto })
   updateReservation(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateReservationDto: UpdateReservationDto,
     @Request() req
   ) {
@@ -186,7 +186,7 @@ export class ReservationController {
   @ApiParam({ name: 'id', description: 'Reservation ID', type: String })
   @ApiBody({ type: ReservationStatusDto })
   updateReservationStatus(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() statusDto: ReservationStatusDto,
     @Request() req
   ) {
@@ -213,7 +213,7 @@ export class ReservationController {
     }
   })
   cancelReservation(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Request() req,
     @Body('performedBy') performedBy?: string
   ) {
@@ -251,7 +251,7 @@ export class ReservationController {
   @ApiQuery({ name: 'startDate', description: 'Start date (YYYY-MM-DD)', required: true })
   @ApiQuery({ name: 'endDate', description: 'End date (YYYY-MM-DD)', required: true })
   getReservationStats(
-    @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
     @Request() req
@@ -269,7 +269,7 @@ export class ReservationController {
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
   @ApiQuery({ name: 'hours', description: 'Hours to look ahead', required: false, type: Number })
   getUpcomingReservations(
-    @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
     @Query('hours', new DefaultValuePipe(24), ParseIntPipe) hours: number,
     @Request() req
   ) {
@@ -286,7 +286,7 @@ export class ReservationController {
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
   @ApiQuery({ name: 'date', description: 'Date (YYYY-MM-DD)', required: true })
   getDailyReservations(
-    @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
     @Query('date') date: string,
     @Request() req
   ) {

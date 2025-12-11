@@ -2,21 +2,20 @@ import {
   IsString, 
   IsNotEmpty, 
   IsNumber, 
-  IsUUID, 
   IsOptional, 
   IsDateString,
   Min,
-  IsEnum
+  IsInt
 } from 'class-validator';
 
 export class CreateInventoryItemDto {
-  @IsUUID()
+  @IsInt()
   @IsNotEmpty()
-  restaurantId: string;
+  restaurantId: number;  // Changed from string/UUID to number
 
-  @IsUUID()
+  @IsInt()
   @IsNotEmpty()
-  supplierId: string;
+  supplierId: number;    // Changed from string/UUID to number
 
   @IsString()
   @IsNotEmpty()

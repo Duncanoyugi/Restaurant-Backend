@@ -1,13 +1,16 @@
-import { IsUUID, IsOptional, IsDateString, IsNotEmpty } from 'class-validator';
+import { IsNumber, IsOptional, IsDateString, IsNotEmpty } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class KitchenOrderSearchDto {
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsNotEmpty()
-  restaurantId: string;
+  restaurantId: number;
 
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsOptional()
-  statusId?: string;
+  statusId?: number;
 
   @IsDateString()
   @IsOptional()

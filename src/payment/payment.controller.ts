@@ -14,7 +14,8 @@ import {
   UseGuards,
   Request,
   BadRequestException,
-  ForbiddenException
+  ForbiddenException,
+  ParseIntPipe
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -63,7 +64,9 @@ export class PaymentController {
     // Auto-assign user ID if not provided
     const paymentData = {
       ...createPaymentDto,
-      userId: createPaymentDto.userId || req.user.id
+      userId: createPaymentDto.userId || req.user.id,
+      customerEmail: createPaymentDto.customerEmail || req.user.email,
+      customerName: createPaymentDto.customerName || `${req.user.first_name} ${req.user.last_name}`
     };
 
     return this.paymentService.initializePayment(paymentData, req.user);
@@ -136,7 +139,7 @@ export class PaymentController {
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this payment' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiParam({ name: 'id', description: 'Payment ID' })
-  async findOne(@Param('id') id: string, @Request() req) {
+  async findOne(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.paymentService.findOne(id, req.user);
   }
 
@@ -165,7 +168,7 @@ export class PaymentController {
   @ApiResponse({ status: 200, description: 'User payments retrieved successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this user payments' })
   @ApiParam({ name: 'userId', description: 'User ID' })
-  async getUserPayments(@Param('userId') userId: string, @Request() req) {
+  async getUserPayments(@Param('userId', ParseIntPipe) userId: number, @Request() req) {
     // Users can only access their own payment history unless they're admin
     if (req.user.role.name !== UserRoleEnum.ADMIN && req.user.id !== userId) {
       throw new ForbiddenException('You can only access your own payment history');
@@ -187,7 +190,7 @@ export class PaymentController {
   @ApiParam({ name: 'id', description: 'Payment ID' })
   @ApiBody({ type: UpdatePaymentDto })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updatePaymentDto: UpdatePaymentDto,
     @Request() req
   ) {
@@ -206,7 +209,7 @@ export class PaymentController {
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiParam({ name: 'id', description: 'Payment ID' })
-  async remove(@Param('id') id: string, @Request() req) {
+  async remove(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.paymentService.remove(id, req.user);
   }
 
@@ -238,7 +241,7 @@ export class PaymentController {
     }
   })
   async initiateRefund(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body('reason') reason: string,
     @Request() req
   ): Promise<{
@@ -264,7 +267,7 @@ export class PaymentController {
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this payment invoice' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiParam({ name: 'id', description: 'Payment ID' })
-  async getInvoice(@Param('id') id: string, @Res() res: Response, @Request() req) {
+  async getInvoice(@Param('id', ParseIntPipe) id: number, @Res() res: Response, @Request() req) {
     const payment = await this.paymentService.findOne(id, req.user);
 
     if (!payment.invoices || payment.invoices.length === 0) {

@@ -10,11 +10,11 @@ import {
 @Index(['restaurantId', 'date'])
 @Index(['date'])
 export class BusinessMetrics {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', nullable: true, name: 'restaurant_id' })
-  restaurantId: string;
+  @Column({ nullable: true, name: 'restaurant_id' })
+  restaurantId: number;
 
   @Column({ type: 'date' })
   date: Date;

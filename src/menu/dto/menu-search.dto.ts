@@ -2,13 +2,15 @@ import { IsOptional, IsString, IsNumber, IsBoolean, IsUUID, Min } from 'class-va
 import { Type } from 'class-transformer';
 
 export class MenuSearchDto {
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsOptional()
-  restaurantId?: string;
+  restaurantId?: number;
 
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsOptional()
-  categoryId?: string;
+  categoryId?: number;
 
   @IsString()
   @IsOptional()

@@ -1,14 +1,15 @@
-import { IsOptional, IsString, IsUUID, IsNumber, IsBoolean, IsNotEmpty } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsBoolean, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class InventorySearchDto {
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  restaurantId: string;
+  restaurantId: number;  // Changed from string/UUID to number
 
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsOptional()
-  supplierId?: string;
+  supplierId?: number;   // Changed from string/UUID to number
 
   @IsString()
   @IsOptional()

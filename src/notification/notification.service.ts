@@ -33,7 +33,7 @@ export class NotificationService {
   ) {}
 
   // Helper method to check notification access
-  private async checkNotificationAccess(user: User, notificationId?: string, notificationUserId?: string): Promise<void> {
+  private async checkNotificationAccess(user: User, notificationId?: number, notificationUserId?: number): Promise<void> {
     if (user.role.name === UserRoleEnum.ADMIN) {
       return; // Admin has access to all notifications
     }
@@ -61,7 +61,7 @@ export class NotificationService {
   }
 
   // Helper method to check restaurant access for notifications
-  private async checkRestaurantNotificationAccess(user: User, restaurantId?: string): Promise<void> {
+  private async checkRestaurantNotificationAccess(user: User, restaurantId?: number): Promise<void> {
     if (user.role.name === UserRoleEnum.ADMIN) {
       return;
     }
@@ -240,7 +240,7 @@ export class NotificationService {
     };
   }
 
-  async findOne(id: string, user?: User): Promise<any> {
+  async findOne(id: number, user?: User): Promise<any> {
     const notification = await this.notificationRepository.findOne({
       where: { id },
       relations: ['user'],
@@ -259,22 +259,22 @@ export class NotificationService {
     return this.formatNotification(notification);
   }
 
-  async findByUserId(userId: string, query: NotificationQueryDto, user?: User): Promise<any> {
+  async findByUserId(userId: number, query: NotificationQueryDto, user?: User): Promise<any> {
     // Users can only access their own notifications
     if (user && user.id !== userId && user.role.name !== UserRoleEnum.ADMIN) {
       throw new ForbiddenException('You can only access your own notifications');
     }
 
-    const { 
-      page = 1, 
-      limit = 20, 
-      type, 
-      priority, 
-      channel, 
-      isRead, 
-      startDate, 
+    const {
+      page = 1,
+      limit = 20,
+      type,
+      priority,
+      channel,
+      isRead,
+      startDate,
       endDate,
-      unreadOnly 
+      unreadOnly
     } = query;
 
     const skip = (page - 1) * limit;
@@ -313,7 +313,7 @@ export class NotificationService {
       take: limit,
     });
 
-    const formattedNotifications = notifications.map(notification => 
+    const formattedNotifications = notifications.map(notification =>
       this.formatNotification(notification)
     );
 
@@ -329,7 +329,7 @@ export class NotificationService {
     };
   }
 
-  async update(id: string, updateNotificationDto: UpdateNotificationDto, user?: User): Promise<any> {
+  async update(id: number, updateNotificationDto: UpdateNotificationDto, user?: User): Promise<any> {
     const notification = await this.notificationRepository.findOne({
       where: { id },
     });
@@ -362,7 +362,7 @@ export class NotificationService {
     return this.formatNotification(updatedNotification);
   }
 
-  async remove(id: string, user?: User): Promise<any> {
+  async remove(id: number, user?: User): Promise<any> {
     const notification = await this.notificationRepository.findOne({
       where: { id },
     });
@@ -381,7 +381,7 @@ export class NotificationService {
     return { message: 'Notification deleted successfully' };
   }
 
-  async markAsRead(id: string, markReadDto: MarkReadDto, user?: User): Promise<any> {
+  async markAsRead(id: number, markReadDto: MarkReadDto, user?: User): Promise<any> {
     const notification = await this.notificationRepository.findOne({
       where: { id },
     });
@@ -395,9 +395,9 @@ export class NotificationService {
       throw new ForbiddenException('User context is required to mark notifications as read');
     }
     await this.checkNotificationAccess(user, id, notification.userId);
-    
+
     notification.isRead = markReadDto.isRead;
-    
+
     // FIX: Handle readAt field properly - use null instead of undefined
     if (markReadDto.isRead) {
       notification.readAt = new Date();
@@ -409,7 +409,7 @@ export class NotificationService {
     return this.formatNotification(updatedNotification);
   }
 
-  async markAllAsRead(userId: string, user?: User): Promise<any> {
+  async markAllAsRead(userId: number, user?: User): Promise<any> {
     // Users can only mark their own notifications as read
     if (user && user.id !== userId && user.role.name !== UserRoleEnum.ADMIN) {
       throw new ForbiddenException('You can only mark your own notifications as read');
@@ -423,9 +423,9 @@ export class NotificationService {
     return { message: 'All notifications marked as read' };
   }
 
-  async getUnreadCount(userId?: string, user?: User): Promise<number> {
+  async getUnreadCount(userId?: number, user?: User): Promise<number> {
     const where: FindOptionsWhere<Notification> = { isRead: false };
-    
+
     if (userId) {
       // Users can only get count for their own notifications
       if (user && user.id !== userId && user.role.name !== UserRoleEnum.ADMIN) {
@@ -437,9 +437,9 @@ export class NotificationService {
     return await this.notificationRepository.count({ where });
   }
 
-  async getNotificationStats(userId?: string, user?: User): Promise<any> {
+  async getNotificationStats(userId?: number, user?: User): Promise<any> {
     const where: FindOptionsWhere<Notification> = {};
-    
+
     if (userId) {
       // Users can only get stats for their own notifications
       if (user && user.id !== userId && user.role.name !== UserRoleEnum.ADMIN) {
@@ -450,7 +450,7 @@ export class NotificationService {
 
     const total = await this.notificationRepository.count({ where });
     const unread = await this.notificationRepository.count({ where: { ...where, isRead: false } });
-    
+
     const byType = await this.notificationRepository
       .createQueryBuilder('notification')
       .select('notification.type', 'type')
@@ -488,7 +488,7 @@ export class NotificationService {
     }
 
     // Get user's restaurant ID
-    let restaurantId: string | undefined;
+    let restaurantId: number | undefined;
     if (user.role.name === UserRoleEnum.RESTAURANT_OWNER) {
       const restaurant = await this.restaurantRepository.findOne({
         where: { owner: { id: user.id } }
@@ -587,7 +587,7 @@ export class NotificationService {
   }
 
   // System notification methods for different workflows
-  async notifyOrderConfirmed(userId: string, orderData: any, user?: User) {
+  async notifyOrderConfirmed(userId: number, orderData: any, user?: User) {
     return this.create({
       userId,
       type: NotificationType.ORDER_CONFIRMED,
@@ -600,7 +600,7 @@ export class NotificationService {
     } as CreateNotificationDto, user);
   }
 
-  async notifyReservationConfirmed(userId: string, reservationData: any, user?: User) {
+  async notifyReservationConfirmed(userId: number, reservationData: any, user?: User) {
     return this.create({
       userId,
       type: NotificationType.RESERVATION_CONFIRMED,
@@ -613,7 +613,7 @@ export class NotificationService {
     } as CreateNotificationDto, user);
   }
 
-  async notifyPaymentSuccess(userId: string, paymentData: any, user?: User) {
+  async notifyPaymentSuccess(userId: number, paymentData: any, user?: User) {
     return this.create({
       userId,
       type: NotificationType.PAYMENT_SUCCESS,
@@ -626,7 +626,7 @@ export class NotificationService {
     } as CreateNotificationDto, user);
   }
 
-  async notifyDeliveryAssigned(userId: string, deliveryData: any, user?: User) {
+  async notifyDeliveryAssigned(userId: number, deliveryData: any, user?: User) {
     return this.create({
       userId,
       type: NotificationType.DELIVERY_ASSIGNED,
@@ -637,7 +637,7 @@ export class NotificationService {
     } as CreateNotificationDto, user);
   }
 
-  async notifyLowInventory(adminUserIds: string[], inventoryData: any, user?: User) {
+  async notifyLowInventory(adminUserIds: number[], inventoryData: any, user?: User) {
     return this.createBulk({
       userIds: adminUserIds,
       type: NotificationType.LOW_INVENTORY_ALERT,
@@ -652,7 +652,7 @@ export class NotificationService {
 
   async notifyNewReview(reviewData: any, user?: User) {
     // Notify restaurant owners/admins about new review
-    const adminUserIds: string[] = []; // Placeholder - implement as needed
+    const adminUserIds: number[] = []; // Placeholder - implement as needed
     return this.createBulk({
       userIds: adminUserIds,
       type: NotificationType.REVIEW_RECEIVED,
@@ -714,7 +714,7 @@ export class NotificationService {
     return result;
   }
 
-  private async getRestaurantCustomerIds(user: User): Promise<string[]> {
+  private async getRestaurantCustomerIds(user: User): Promise<number[]> {
     // Simplified implementation - in real app, get from orders/reservations
     const restaurant = await this.restaurantRepository.findOne({
       where: { owner: { id: user.id } }
@@ -731,6 +731,6 @@ export class NotificationService {
       .where('order.restaurantId = :restaurantId', { restaurantId: restaurant.id })
       .getRawMany();
 
-    return orders.map(order => order.userId).filter((id): id is string => id !== null);
+    return orders.map(order => order.userId).filter((id): id is number => id !== null);
   }
 }

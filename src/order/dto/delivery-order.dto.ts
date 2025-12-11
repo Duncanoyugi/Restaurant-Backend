@@ -1,15 +1,19 @@
-import { IsUUID, IsOptional, IsEnum } from 'class-validator';
+import { IsNumber, IsOptional, IsEnum } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class DeliveryOrderSearchDto {
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsOptional()
-  restaurantId?: string;
+  restaurantId?: number;
 
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsOptional()
-  driverId?: string;
+  driverId?: number;
 
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsOptional()
-  statusId?: string;
+  statusId?: number;
 }

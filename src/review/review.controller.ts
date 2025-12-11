@@ -1,17 +1,17 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
   Query,
   UseGuards,
   Request,
   HttpStatus,
   HttpCode,
-  ParseUUIDPipe
+  ParseIntPipe
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -68,7 +68,7 @@ export class ReviewController {
   @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
   @ApiQuery({ type: ReviewQueryDto })
   async findByRestaurant(
-    @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
     @Query() query: ReviewQueryDto,
   ) {
     return this.reviewService.findByRestaurant(restaurantId, query);
@@ -79,10 +79,10 @@ export class ReviewController {
   @ApiOperation({ summary: 'Get reviews by menu item' })
   @ApiResponse({ status: 200, description: 'Menu item reviews retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
-  @ApiParam({ name: 'menuItemId', description: 'Menu item ID', type: String })
+  @ApiParam({ name: 'menuItemId', description: 'Menu item ID', type: Number })
   @ApiQuery({ type: ReviewQueryDto })
   async findByMenuItem(
-    @Param('menuItemId', ParseUUIDPipe) menuItemId: string,
+    @Param('menuItemId', ParseIntPipe) menuItemId: number,
     @Query() query: ReviewQueryDto,
   ) {
     return this.reviewService.findByMenuItem(menuItemId, query);
@@ -93,8 +93,8 @@ export class ReviewController {
   @ApiOperation({ summary: 'Get restaurant review statistics' })
   @ApiResponse({ status: 200, description: 'Review statistics retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  async getRestaurantStats(@Param('restaurantId', ParseUUIDPipe) restaurantId: string) {
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
+  async getRestaurantStats(@Param('restaurantId', ParseIntPipe) restaurantId: number) {
     return this.reviewService.getRestaurantReviewStats(restaurantId);
   }
 
@@ -103,8 +103,8 @@ export class ReviewController {
   @ApiOperation({ summary: 'Get review by ID' })
   @ApiResponse({ status: 200, description: 'Review retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Review not found' })
-  @ApiParam({ name: 'id', description: 'Review ID', type: String })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'Review ID', type: Number })
+  async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.reviewService.findOne(id);
   }
 
@@ -117,10 +117,10 @@ export class ReviewController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Can only update own reviews' })
   @ApiResponse({ status: 404, description: 'Review not found' })
-  @ApiParam({ name: 'id', description: 'Review ID', type: String })
+  @ApiParam({ name: 'id', description: 'Review ID', type: Number })
   @ApiBody({ type: UpdateReviewDto })
   async update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateReviewDto: UpdateReviewDto,
     @Request() req,
   ) {
@@ -137,8 +137,8 @@ export class ReviewController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Can only delete own reviews' })
   @ApiResponse({ status: 404, description: 'Review not found' })
-  @ApiParam({ name: 'id', description: 'Review ID', type: String })
-  async remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Review ID', type: Number })
+  async remove(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.reviewService.remove(id, req.user.id);
   }
 
@@ -151,10 +151,10 @@ export class ReviewController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
   @ApiResponse({ status: 404, description: 'Review not found' })
-  @ApiParam({ name: 'id', description: 'Review ID', type: String })
+  @ApiParam({ name: 'id', description: 'Review ID', type: Number })
   @ApiBody({ type: ReviewResponseDto })
   async addAdminResponse(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() responseDto: ReviewResponseDto,
   ) {
     return this.reviewService.addAdminResponse(id, responseDto);
@@ -169,8 +169,8 @@ export class ReviewController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
   @ApiResponse({ status: 404, description: 'Review not found' })
-  @ApiParam({ name: 'id', description: 'Review ID', type: String })
-  async verifyReview(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'Review ID', type: Number })
+  async verifyReview(@Param('id', ParseIntPipe) id: number) {
     return this.reviewService.verifyReview(id);
   }
 }

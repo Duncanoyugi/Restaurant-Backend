@@ -28,7 +28,7 @@ export class AnalyticsService {
     try {
       // FIX: Use explicit field assignment instead of spreading
       const activityLogData: Partial<ActivityLog> = {
-        userId: createActivityLogDto.userId,
+        userId: Number(createActivityLogDto.userId),
         action: createActivityLogDto.action,
         entityType: createActivityLogDto.entityType,
         entityId: createActivityLogDto.entityId,

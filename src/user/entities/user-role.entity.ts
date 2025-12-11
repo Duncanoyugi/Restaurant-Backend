@@ -12,8 +12,8 @@ import { User } from './user.entity';
 @Entity('user_roles')
 export class UserRole {
   // FIX: Add primary column
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'varchar', length: 50, unique: true })
   @Index()

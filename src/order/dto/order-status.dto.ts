@@ -1,15 +1,15 @@
-import { IsUUID, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class OrderStatusDto {
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  statusId: string;
+  statusId: number;
 
   @IsString()
   @IsOptional()
   notes?: string;
 
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
-  updatedBy?: string;
+  updatedBy?: number;
 }

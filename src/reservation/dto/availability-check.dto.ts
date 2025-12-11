@@ -1,9 +1,11 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsUUID, Min, IsString, IsOptional } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsNumber, Min, IsString, IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class AvailabilityCheckDto {
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsNotEmpty()
-  restaurantId: string;
+  restaurantId: number;
 
   @IsDateString()
   @IsNotEmpty()

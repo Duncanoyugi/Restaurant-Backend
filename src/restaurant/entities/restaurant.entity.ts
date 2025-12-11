@@ -23,8 +23,8 @@ import { RestaurantStaff } from './restaurant-staff.entity';
 @Index(['phone'])
 @Index(['ownerId'])
 export class Restaurant {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'varchar', length: 200 })
   name: string;
@@ -69,11 +69,11 @@ export class Restaurant {
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0, name: 'average_rating' })
   averageRating: number;
 
-  @Column({ type: 'uuid', name: 'owner_id' })
-  ownerId: string;
+  @Column({ name: 'owner_id' })
+  ownerId: number;
 
-  @Column({ type: 'uuid', name: 'city_id' })
-  cityId: string;
+  @Column({ name: 'city_id' })
+  cityId: number;
 
   @ManyToOne(() => User, (user) => user.ownedRestaurants)
   @JoinColumn({ name: 'owner_id' })

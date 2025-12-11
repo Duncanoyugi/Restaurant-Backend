@@ -18,14 +18,14 @@ import { Review } from '../../review/entities/review.entity';
 @Entity('menu_item')
 @Index(['restaurantId', 'categoryId'])
 export class MenuItem {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'restaurant_id' })
-  restaurantId: string;
+  @Column({ name: 'restaurant_id' })
+  restaurantId: number;
 
-  @Column({ type: 'uuid', name: 'category_id' })
-  categoryId: string;
+  @Column({ name: 'category_id' })
+  categoryId: number;
 
   @Column({ type: 'varchar', length: 200 })
   name: string;

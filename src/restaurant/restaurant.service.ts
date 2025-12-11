@@ -39,7 +39,12 @@ export class RestaurantService {
       throw new ConflictException('Restaurant with this email already exists');
     }
 
-    const restaurant = this.restaurantRepository.create(createRestaurantDto);
+    // DTOs now use number types directly
+    const restaurantData = {
+      ...createRestaurantDto,
+    };
+
+    const restaurant = this.restaurantRepository.create(restaurantData);
     return await this.restaurantRepository.save(restaurant);
   }
 
@@ -54,7 +59,7 @@ export class RestaurantService {
     }
 
     if (cityId) {
-      where.cityId = cityId;
+      where.cityId = parseInt(cityId);
     }
 
     if (minRating !== undefined) {
@@ -78,7 +83,7 @@ export class RestaurantService {
 
   async findOne(id: string): Promise<Restaurant> {
     const restaurant = await this.restaurantRepository.findOne({
-      where: { id },
+      where: { id: parseInt(id) },
       relations: [
         'city',
         'city.state',
@@ -110,6 +115,8 @@ export class RestaurantService {
       }
     }
 
+    // DTOs now use number types directly, no conversion needed
+
     Object.assign(restaurant, updateRestaurantDto);
     return await this.restaurantRepository.save(restaurant);
   }
@@ -131,13 +138,20 @@ export class RestaurantService {
       throw new ConflictException('User is already staff in a restaurant');
     }
 
-    const staff = this.staffRepository.create(createStaffDto);
+    // Convert string IDs to numbers
+    const staffData = {
+      ...createStaffDto,
+      userId: createStaffDto.userId,
+      restaurantId: createStaffDto.restaurantId
+    };
+
+    const staff = this.staffRepository.create(staffData);
     return await this.staffRepository.save(staff);
   }
 
   async findAllStaff(restaurantId: string): Promise<RestaurantStaff[]> {
     return await this.staffRepository.find({
-      where: { restaurantId, active: true },
+      where: { restaurantId: parseInt(restaurantId), active: true },
       relations: ['user', 'restaurant'],
       order: { position: 'ASC', hireDate: 'DESC' }
     });
@@ -145,7 +159,7 @@ export class RestaurantService {
 
   async findStaffById(id: string): Promise<RestaurantStaff> {
     const staff = await this.staffRepository.findOne({
-      where: { id },
+      where: { id: parseInt(id) },
       relations: ['user', 'restaurant', 'shifts']
     });
 
@@ -192,7 +206,7 @@ export class RestaurantService {
   }
 
   async findShiftsByStaff(staffId: string, startDate?: string, endDate?: string): Promise<Shift[]> {
-    const where: any = { staffId };
+    const where: any = { staffId: parseInt(staffId) };
 
     if (startDate && endDate) {
       where.shiftDate = Between(startDate, endDate);
@@ -210,7 +224,7 @@ export class RestaurantService {
       .createQueryBuilder('shift')
       .leftJoinAndSelect('shift.staff', 'staff')
       .leftJoinAndSelect('staff.user', 'user')
-      .where('staff.restaurantId = :restaurantId', { restaurantId });
+      .where('staff.restaurantId = :restaurantId', { restaurantId: parseInt(restaurantId) });
 
     if (date) {
       query.andWhere('shift.shiftDate = :date', { date });
@@ -223,18 +237,20 @@ export class RestaurantService {
   }
 
   async updateShift(id: string, updateShiftDto: UpdateShiftDto): Promise<Shift> {
-    const shift = await this.shiftRepository.findOne({ where: { id } });
+    const shift = await this.shiftRepository.findOne({ where: { id: parseInt(id) } });
 
     if (!shift) {
       throw new NotFoundException(`Shift with ID ${id} not found`);
     }
+
+    // DTOs now use number types directly, no conversion needed
 
     Object.assign(shift, updateShiftDto);
     return await this.shiftRepository.save(shift);
   }
 
   async removeShift(id: string): Promise<void> {
-    const shift = await this.shiftRepository.findOne({ where: { id } });
+    const shift = await this.shiftRepository.findOne({ where: { id: parseInt(id) } });
 
     if (!shift) {
       throw new NotFoundException(`Shift with ID ${id} not found`);
@@ -275,10 +291,10 @@ export class RestaurantService {
     const restaurant = await this.findOne(restaurantId);
 
     const [totalStaff, activeShifts, totalMenuItems] = await Promise.all([
-      this.staffRepository.count({ where: { restaurantId, active: true } }),
+      this.staffRepository.count({ where: { restaurantId: parseInt(restaurantId), active: true } }),
       this.shiftRepository.count({
         where: {
-          staff: { restaurantId },
+          staff: { restaurantId: parseInt(restaurantId) },
           status: 'Scheduled'
         }
       }),
@@ -304,7 +320,7 @@ export class RestaurantService {
   async getPopularRestaurantsInCity(cityId: string, limit: number = 10): Promise<Restaurant[]> {
     return await this.restaurantRepository.find({
       where: {
-        cityId,
+        cityId: parseInt(cityId),
         active: true
       },
       relations: ['city', 'owner'],
@@ -344,7 +360,7 @@ export class RestaurantService {
   // Validate restaurant ownership
   async validateRestaurantOwnership(restaurantId: string, userId: string): Promise<boolean> {
     const restaurant = await this.restaurantRepository.findOne({
-      where: { id: restaurantId, ownerId: userId }
+      where: { id: parseInt(restaurantId), ownerId: parseInt(userId) }
     });
     return !!restaurant;
   }
@@ -352,7 +368,7 @@ export class RestaurantService {
   // Check if user is staff in restaurant
   async isUserStaffInRestaurant(userId: string, restaurantId: string): Promise<boolean> {
     const staff = await this.staffRepository.findOne({
-      where: { userId, restaurantId, active: true }
+      where: { userId: parseInt(userId), restaurantId: parseInt(restaurantId), active: true }
     });
     return !!staff;
   }

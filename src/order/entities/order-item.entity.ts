@@ -11,14 +11,14 @@ import { MenuItem } from '../../menu/entities/menu.entity';
 
 @Entity('order_item')
 export class OrderItem {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'order_id' })
-  orderId: string;
+  @Column({ name: 'order_id' })
+  orderId: number;
 
-  @Column({ type: 'uuid', name: 'menu_item_id' })
-  menuItemId: string;
+  @Column({ name: 'menu_item_id' })
+  menuItemId: number;
 
   @Column({ type: 'int' })
   quantity: number;

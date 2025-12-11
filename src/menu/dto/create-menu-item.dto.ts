@@ -1,10 +1,9 @@
-import { 
-  IsString, 
-  IsNotEmpty, 
-  IsOptional, 
-  IsNumber, 
-  IsBoolean, 
-  IsUUID,
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
   Min,
   IsArray,
   ValidateNested
@@ -12,13 +11,13 @@ import {
 import { Type } from 'class-transformer';
 
 export class CreateMenuItemDto {
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  restaurantId: string;
+  restaurantId: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  categoryId: string;
+  categoryId: number;
 
   @IsString()
   @IsNotEmpty()

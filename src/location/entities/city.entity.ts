@@ -13,14 +13,14 @@ import { Address } from './address.entity';
 
 @Entity('city')
 export class City {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'varchar', length: 100 })
   name: string;
 
-  @Column({ type: 'uuid', name: 'state_id' })
-  stateId: string;
+  @Column({ name: 'state_id' })
+  stateId: number;
 
   @ManyToOne(() => State, (state) => state.cities)
   @JoinColumn({ name: 'state_id' })

@@ -21,11 +21,11 @@ import { Order } from '../../order/entities/order.entity';
 
 @Entity('table')
 export class Table {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'restaurant_id' })
-  restaurantId: string;
+  @Column({ name: 'restaurant_id' })
+  restaurantId: number;
 
   @Column({ type: 'varchar', length: 20, name: 'table_number' })
   tableNumber: string;

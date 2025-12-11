@@ -20,23 +20,23 @@ export class CreatePaymentDto {
   @IsEnum(PaymentMethod)
   method: PaymentMethod;
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  orderId?: string;
+  orderId?: number;
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  reservationId?: string;
+  reservationId?: number;
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  roomBookingId?: string;
+  roomBookingId?: number;
 
   @IsString()
   @IsOptional()
   callbackUrl?: string;
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  userId?: string;
+  userId?: number;
 }

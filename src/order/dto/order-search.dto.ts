@@ -1,23 +1,23 @@
-import { IsOptional, IsUUID, IsEnum, IsDateString, IsNumber } from 'class-validator';
+import { IsOptional, IsNumber, IsEnum, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderType } from '../entities/order.entity';
 
 export class OrderSearchDto {
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
-  restaurantId?: string;
+  restaurantId?: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
-  userId?: string;
+  userId?: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
-  driverId?: string;
+  driverId?: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
-  statusId?: string;
+  statusId?: number;
 
   @IsEnum(OrderType)
   @IsOptional()

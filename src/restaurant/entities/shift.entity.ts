@@ -13,11 +13,11 @@ import { RestaurantStaff } from './restaurant-staff.entity';
 @Entity('shift')
 @Index(['staffId', 'shiftDate'])
 export class Shift {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'staff_id' })
-  staffId: string;
+  @Column({ name: 'staff_id' })
+  staffId: number;
 
   @Column({ type: 'datetime', name: 'start_time' })
   startTime: Date;

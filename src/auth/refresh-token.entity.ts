@@ -13,11 +13,11 @@ import { User } from '../user/entities/user.entity';
 @Index(['userId'])
 @Index(['token'])
 export class RefreshToken {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'user_id' })
-  userId: string;
+  @Column({ name: 'user_id' })
+  userId: number;
 
   @Column({ type: 'varchar', length: 500, unique: true })
   token: string;

@@ -11,11 +11,11 @@ import { User } from '../../user/entities/user.entity';
 
 @Entity('vehicle_info')
 export class VehicleInfo {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'user_id', unique: true })
-  userId: string;
+  @Column({ name: 'user_id', unique: true })
+  userId: number;
 
   @Column({ type: 'varchar', length: 50, name: 'vehicle_make' })
   vehicleMake: string;

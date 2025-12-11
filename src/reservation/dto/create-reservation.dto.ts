@@ -12,17 +12,17 @@ import {
 import { ReservationType, ReservationStatus } from '../entities/reservation.entity';
 
 export class CreateReservationDto {
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  userId: string;
+  userId: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  restaurantId: string;
+  restaurantId: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
-  tableId?: string;
+  tableId?: number;
 
   @IsEnum(ReservationType)
   @IsNotEmpty()

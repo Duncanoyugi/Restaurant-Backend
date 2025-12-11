@@ -11,7 +11,7 @@ import {
   Request,
   HttpCode,
   HttpStatus,
-  ParseUUIDPipe
+  ParseIntPipe
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -111,8 +111,8 @@ export class NotificationController {
   @ApiResponse({ status: 200, description: 'Notification retrieved successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot access this notification' })
   @ApiResponse({ status: 404, description: 'Notification not found' })
-  @ApiParam({ name: 'id', description: 'Notification ID', type: String })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Notification ID', type: Number })
+  findOne(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.notificationService.findOne(id, req.user);
   }
 
@@ -125,7 +125,7 @@ export class NotificationController {
   @ApiParam({ name: 'id', description: 'Notification ID', type: String })
   @ApiBody({ type: UpdateNotificationDto })
   update(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateNotificationDto: UpdateNotificationDto,
     @Request() req
   ) {
@@ -140,7 +140,7 @@ export class NotificationController {
   @ApiParam({ name: 'id', description: 'Notification ID', type: String })
   @ApiBody({ type: MarkReadDto })
   markAsRead(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() markReadDto: MarkReadDto,
     @Request() req
   ) {
@@ -161,8 +161,8 @@ export class NotificationController {
   @ApiResponse({ status: 204, description: 'Notification deleted successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden - Cannot delete this notification' })
   @ApiResponse({ status: 404, description: 'Notification not found' })
-  @ApiParam({ name: 'id', description: 'Notification ID', type: String })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Notification ID', type: Number })
+  remove(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.notificationService.remove(id, req.user);
   }
 
@@ -215,14 +215,14 @@ export class NotificationController {
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'string', format: 'uuid' },
+        userId: { type: 'number' },
         orderData: { type: 'object' }
       },
       required: ['userId', 'orderData']
     }
   })
   async notifyOrderConfirmed(
-    @Body() body: { userId: string; orderData: any },
+    @Body() body: { userId: number; orderData: any },
     @Request() req
   ) {
     return this.notificationService.notifyOrderConfirmed(body.userId, body.orderData, req.user);
@@ -236,14 +236,14 @@ export class NotificationController {
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'string', format: 'uuid' },
+        userId: { type: 'number' },
         reservationData: { type: 'object' }
       },
       required: ['userId', 'reservationData']
     }
   })
   async notifyReservationConfirmed(
-    @Body() body: { userId: string; reservationData: any },
+    @Body() body: { userId: number; reservationData: any },
     @Request() req
   ) {
     return this.notificationService.notifyReservationConfirmed(body.userId, body.reservationData, req.user);
@@ -257,14 +257,14 @@ export class NotificationController {
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'string', format: 'uuid' },
+        userId: { type: 'number' },
         paymentData: { type: 'object' }
       },
       required: ['userId', 'paymentData']
     }
   })
   async notifyPaymentSuccess(
-    @Body() body: { userId: string; paymentData: any },
+    @Body() body: { userId: number; paymentData: any },
     @Request() req
   ) {
     return this.notificationService.notifyPaymentSuccess(body.userId, body.paymentData, req.user);
@@ -278,14 +278,14 @@ export class NotificationController {
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'string', format: 'uuid' },
+        userId: { type: 'number' },
         deliveryData: { type: 'object' }
       },
       required: ['userId', 'deliveryData']
     }
   })
   async notifyDeliveryAssigned(
-    @Body() body: { userId: string; deliveryData: any },
+    @Body() body: { userId: number; deliveryData: any },
     @Request() req
   ) {
     return this.notificationService.notifyDeliveryAssigned(body.userId, body.deliveryData, req.user);
@@ -299,14 +299,14 @@ export class NotificationController {
     schema: {
       type: 'object',
       properties: {
-        adminUserIds: { type: 'array', items: { type: 'string', format: 'uuid' } },
+        adminUserIds: { type: 'array', items: { type: 'number' } },
         inventoryData: { type: 'object' }
       },
       required: ['adminUserIds', 'inventoryData']
     }
   })
   async notifyLowInventory(
-    @Body() body: { adminUserIds: string[]; inventoryData: any },
+    @Body() body: { adminUserIds: number[]; inventoryData: any },
     @Request() req
   ) {
     return this.notificationService.notifyLowInventory(body.adminUserIds, body.inventoryData, req.user);

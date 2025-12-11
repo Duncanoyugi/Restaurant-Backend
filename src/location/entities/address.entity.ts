@@ -15,11 +15,11 @@ import { Order } from '../../order/entities/order.entity';
 
 @Entity('address')
 export class Address {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'user_id' })
-  userId: string;
+  @Column({ name: 'user_id' })
+  userId: number;
 
   @Column({ type: 'varchar', length: 255, name: 'street_address_1' })
   streetAddress1: string;
@@ -42,8 +42,8 @@ export class Address {
   @Column({ type: 'bit', default: 0, name: 'is_default' })
   isDefault: boolean;
 
-  @Column({ type: 'uuid', name: 'city_id' })
-  cityId: string;
+  @Column({ name: 'city_id' })
+  cityId: number;
 
   @Column({ type: 'text', nullable: true, name: 'delivery_instructions' })
   deliveryInstructions: string;

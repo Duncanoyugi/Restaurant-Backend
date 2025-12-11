@@ -1,56 +1,60 @@
-import { 
-  IsUUID, 
-  IsNotEmpty, 
-  IsNumber, 
-  IsOptional, 
-  Min, 
-  Max,
-  IsString
-} from 'class-validator';
+// backend\src\delivery\dto\create-delivery-tracking.dto.ts
+import { IsNumber, IsString, IsOptional, IsDecimal, Min, Max } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateDeliveryTrackingDto {
-  @IsUUID()
-  @IsNotEmpty()
-  orderId: string;
+  @ApiProperty({ description: 'Order ID for tracking' })
+  @IsNumber()
+  orderId: number;
 
-  @IsUUID()
-  @IsNotEmpty()
-  driverId: string;
+  @ApiProperty({ description: 'Driver ID assigned to delivery' })
+  @IsNumber()
+  driverId: number;
 
+  @ApiProperty({ description: 'Latitude coordinate', example: 37.7749 })
   @IsNumber()
   @Min(-90)
   @Max(90)
-  @IsNotEmpty()
   latitude: number;
 
+  @ApiProperty({ description: 'Longitude coordinate', example: -122.4194 })
   @IsNumber()
   @Min(-180)
   @Max(180)
-  @IsNotEmpty()
   longitude: number;
 
+  @ApiProperty({ description: 'Speed in km/h', required: false })
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  @IsOptional()
+  @Max(300)
   speed?: number;
 
+  @ApiProperty({ description: 'Heading in degrees (0-360)', required: false })
+  @IsOptional()
   @IsNumber()
   @Min(0)
   @Max(360)
-  @IsOptional()
   heading?: number;
 
+  @ApiProperty({ description: 'Distance to destination in km', required: false })
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  @IsOptional()
   distanceToDestination?: number;
 
+  @ApiProperty({ description: 'Estimated time of arrival in minutes', required: false })
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  @IsOptional()
   etaMinutes?: number;
 
-  @IsString()
+  @ApiProperty({ 
+    description: 'Delivery status', 
+    enum: ['assigned', 'picked_up', 'on_the_way', 'nearby', 'arrived', 'delivered'],
+    required: false 
+  })
   @IsOptional()
+  @IsString()
   status?: string;
 }

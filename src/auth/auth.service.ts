@@ -112,7 +112,7 @@ export class AuthService {
     }
 
     // Update user to mark email as verified and set status to active
-    const updatedUser = await this.usersService.update(user.id, { 
+    const updatedUser = await this.usersService.update(user.id, {
       emailVerified: true,
       status: UserStatus.ACTIVE
     } as any);
@@ -295,7 +295,7 @@ export class AuthService {
   // =========================================================================
   // SAVE REFRESH TOKEN
   // =========================================================================
-  async saveRefreshToken(userId: string, token: string) {
+  async saveRefreshToken(userId: number, token: string) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -312,7 +312,7 @@ export class AuthService {
   // =========================================================================
   // LOGOUT
   // =========================================================================
-  async logout(userId: string) {
+  async logout(userId: number) {
     await this.refreshTokenRepository.update(
       { userId, revoked: false },
       { revoked: true },
@@ -460,8 +460,8 @@ export class AuthService {
 
     // Hash password and update using the existing update method
     const hashedPassword = await bcrypt.hash(newPassword, 12);
-    await this.usersService.update(user.id, { 
-      password: hashedPassword 
+    await this.usersService.update(user.id, {
+      password: hashedPassword
     } as any);
 
     return {

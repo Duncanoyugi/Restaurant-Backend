@@ -33,36 +33,36 @@ import { DeliveryTracking } from '../../delivery/entities/delivery-tracking.enti
 @Index(['createdAt'])
 @Index(['driverId'])
 export class Order {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'varchar', length: 20, unique: true, name: 'order_number' })
   orderNumber: string;
 
-  @Column({ type: 'uuid', name: 'restaurant_id' })
-  restaurantId: string;
+  @Column({ name: 'restaurant_id' })
+  restaurantId: number;
 
-  @Column({ type: 'uuid', name: 'user_id' })
-  userId: string;
+  @Column({ name: 'user_id' })
+  userId: number;
 
-  @Column({ type: 'uuid', nullable: true, name: 'driver_id' })
-  driverId: string;
+  @Column({ nullable: true, name: 'driver_id' })
+  driverId: number;
 
-  @Column({ type: 'uuid', nullable: true, name: 'table_id' })
-  tableId: string;
+  @Column({ nullable: true, name: 'table_id' })
+  tableId: number;
 
-  @Column({ type: 'uuid', nullable: true, name: 'delivery_address_id' })
-  deliveryAddressId: string;
+  @Column({ nullable: true, name: 'delivery_address_id' })
+  deliveryAddressId: number;
 
   // FIX: Change enum to varchar for MSSQL
   @Column({ type: 'varchar', length: 20, name: 'order_type' })
   orderType: OrderType;
 
-  @Column({ type: 'uuid', nullable: true, name: 'payment_id' })
-  paymentId: string;
+  @Column({ nullable: true, name: 'payment_id' })
+  paymentId: number;
 
-  @Column({ type: 'uuid', name: 'status_id' })
-  statusId: string;
+  @Column({ name: 'status_id' })
+  statusId: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, name: 'total_price' })
   totalPrice: number;

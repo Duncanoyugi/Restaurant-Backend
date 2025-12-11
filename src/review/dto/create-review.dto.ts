@@ -12,17 +12,17 @@ import {
 import { Type } from 'class-transformer';
 
 export class CreateReviewDto {
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
-  restaurantId?: string;
+  restaurantId?: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
-  menuItemId?: string;
+  menuItemId?: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
-  orderId?: string;
+  orderId?: number;
 
   @IsNumber()
   @Min(1)

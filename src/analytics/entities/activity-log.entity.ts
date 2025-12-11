@@ -83,11 +83,11 @@ export enum EntityType {
 @Index(['action', 'timestamp'])
 @Index(['timestamp'])
 export class ActivityLog {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', nullable: true, name: 'user_id' })
-  userId: string;
+  @Column({ nullable: true, name: 'user_id' })
+  userId: number;
 
   @Column({ type: 'varchar', length: 100 })
   action: ActivityAction;

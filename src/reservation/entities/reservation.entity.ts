@@ -32,20 +32,20 @@ import { Payment } from '../../payment/entities/payment.entity';
 @Entity('reservation')
 @Index(['restaurantId', 'reservationDate'])
 export class Reservation {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'varchar', length: 20, unique: true, name: 'reservation_number' })
   reservationNumber: string;
 
-  @Column({ type: 'uuid', name: 'user_id' })
-  userId: string;
+  @Column({ name: 'user_id' })
+  userId: number;
 
-  @Column({ type: 'uuid', name: 'restaurant_id' })
-  restaurantId: string;
+  @Column({ name: 'restaurant_id' })
+  restaurantId: number;
 
-  @Column({ type: 'uuid', nullable: true, name: 'table_id' })
-  tableId: string;
+  @Column({ nullable: true, name: 'table_id' })
+  tableId: number;
 
   // FIX: Change enum to varchar for MSSQL
   @Column({ type: 'varchar', length: 20, name: 'reservation_type' })
@@ -67,8 +67,8 @@ export class Reservation {
   @Column({ type: 'varchar', length: 20, default: ReservationStatus.PENDING })
   status: ReservationStatus;
 
-  @Column({ type: 'uuid', nullable: true, name: 'payment_id' })
-  paymentId: string;
+  @Column({ nullable: true, name: 'payment_id' })
+  paymentId: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, name: 'deposit_amount' })
   depositAmount: number;

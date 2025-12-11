@@ -10,9 +10,9 @@ import {
 import { TableStatus } from '../entities/table.entity';
 
 export class CreateTableDto {
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  restaurantId: string;
+  restaurantId: number;
 
   @IsString()
   @IsNotEmpty()

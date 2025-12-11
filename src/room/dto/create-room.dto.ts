@@ -11,9 +11,9 @@ import {
 } from 'class-validator';
 
 export class CreateRoomDto {
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  restaurantId: string;
+  restaurantId: number;
 
   @IsString()
   @IsNotEmpty()

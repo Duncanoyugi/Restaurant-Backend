@@ -1,17 +1,17 @@
-import { 
-  IsString, 
-  IsEnum, 
-  IsOptional, 
-  IsUUID, 
-  IsObject, 
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsNumber,
+  IsObject,
   IsDateString,
   IsBoolean
 } from 'class-validator';
 import { NotificationType, NotificationPriority, NotificationChannel } from '../entities/notification.entity';
 
 export class CreateNotificationDto {
-  @IsUUID()
-  userId: string;
+  @IsNumber()
+  userId: number;
 
   @IsEnum(NotificationType)
   type: NotificationType;

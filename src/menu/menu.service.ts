@@ -34,18 +34,18 @@ export class MenuService {
 
   // Helper method to check restaurant ownership
   // Accepts either (user, restaurantId) or (restaurantId, user) to remain compatible with existing call sites.
-  private async checkRestaurantAccess(userOrRestaurantId: User | string, restaurantIdOrUser?: string | User): Promise<void> {
+  private async checkRestaurantAccess(userOrRestaurantId: User | number, restaurantIdOrUser?: number | User): Promise<void> {
     let user: User;
-    let restaurantId: string;
+    let restaurantId: number;
 
     // Normalize arguments: callers may pass (user, restaurantId)
     // or (restaurantId, user) — handle both to avoid type errors.
-    if (typeof userOrRestaurantId === 'string') {
+    if (typeof userOrRestaurantId === 'number') {
       restaurantId = userOrRestaurantId;
       user = restaurantIdOrUser as User;
     } else {
       user = userOrRestaurantId;
-      restaurantId = restaurantIdOrUser as string;
+      restaurantId = restaurantIdOrUser as number;
     }
 
     if (!user || !restaurantId) {
@@ -86,7 +86,7 @@ export class MenuService {
   }
 
   // Helper method to get user's restaurant ID
-  private async getUserRestaurantId(user: User): Promise<string> {
+  private async getUserRestaurantId(user: User): Promise<number> {
     if (user.role.name === UserRoleEnum.RESTAURANT_OWNER) {
       const restaurant = await this.restaurantRepository.findOne({
         where: { owner: { id: user.id } }
@@ -176,7 +176,7 @@ export class MenuService {
     });
   }
 
-  async findCategoryById(id: string): Promise<Category> {
+  async findCategoryById(id: number): Promise<Category> {
     const category = await this.categoryRepository.findOne({
       where: { id },
       relations: ['menuItems', 'menuItems.restaurant']
@@ -189,7 +189,7 @@ export class MenuService {
     return category;
   }
 
-  async updateCategory(id: string, updateCategoryDto: UpdateCategoryDto, user?: User): Promise<Category> {
+  async updateCategory(id: number, updateCategoryDto: UpdateCategoryDto, user?: User): Promise<Category> {
     const category = await this.findCategoryById(id);
 
     // Check permissions for restaurant-specific categories
@@ -215,7 +215,7 @@ export class MenuService {
     return await this.categoryRepository.save(category);
   }
 
-  async removeCategory(id: string, user?: User): Promise<void> {
+  async removeCategory(id: number, user?: User): Promise<void> {
     const category = await this.findCategoryById(id);
 
     // Check permissions for restaurant-specific categories
@@ -324,7 +324,7 @@ export class MenuService {
     return { data: parsedData, total };
   }
 
-  async findMenuItemById(id: string): Promise<MenuItem> {
+  async findMenuItemById(id: number): Promise<MenuItem> {
     const menuItem = await this.menuItemRepository.findOne({
       where: { id },
       relations: [
@@ -346,7 +346,7 @@ export class MenuService {
     };
   }
 
-  async updateMenuItem(id: string, updateMenuItemDto: UpdateMenuItemDto, user?: User): Promise<MenuItem> {
+  async updateMenuItem(id: number, updateMenuItemDto: UpdateMenuItemDto, user?: User): Promise<MenuItem> {
     const menuItem = await this.findMenuItemById(id);
 
     // Check restaurant access permissions
@@ -385,7 +385,7 @@ export class MenuService {
     };
   }
 
-  async removeMenuItem(id: string, user?: User): Promise<void> {
+  async removeMenuItem(id: number, user?: User): Promise<void> {
     const menuItem = await this.findMenuItemById(id);
 
     // Check restaurant access permissions
@@ -422,7 +422,7 @@ export class MenuService {
   }
 
   // Restaurant-specific operations
-  async getRestaurantMenu(restaurantId: string, categoryId?: string): Promise<{ categories: Category[], menuItems: MenuItem[] }> {
+  async getRestaurantMenu(restaurantId: number, categoryId?: number): Promise<{ categories: Category[], menuItems: MenuItem[] }> {
     const categories = await this.categoryRepository.find({
       where: { active: true },
       order: { sortOrder: 'ASC', name: 'ASC' }
@@ -456,7 +456,7 @@ export class MenuService {
     return { categories, menuItems: parsedMenuItems };
   }
 
-  async getFeaturedMenuItems(restaurantId?: string, limit: number = 10): Promise<MenuItem[]> {
+  async getFeaturedMenuItems(restaurantId?: number, limit: number = 10): Promise<MenuItem[]> {
     const where: FindOptionsWhere<MenuItem> = {
       isFeatured: true,
       available: true
@@ -481,7 +481,7 @@ export class MenuService {
   }
 
   // Search and filter operations
-  async searchMenuItems(query: string, restaurantId?: string): Promise<MenuItem[]> {
+  async searchMenuItems(query: string, restaurantId?: number): Promise<MenuItem[]> {
     const menuItems = await this.menuItemRepository
       .createQueryBuilder('menuItem')
       .leftJoinAndSelect('menuItem.restaurant', 'restaurant')
@@ -506,7 +506,7 @@ export class MenuService {
     }));
   }
 
-  async getMenuItemsByAllergens(restaurantId: string, allergens: string[]): Promise<MenuItem[]> {
+  async getMenuItemsByAllergens(restaurantId: number, allergens: string[]): Promise<MenuItem[]> {
     const menuItems = await this.menuItemRepository
       .createQueryBuilder('menuItem')
       .where('menuItem.restaurantId = :restaurantId', { restaurantId })
@@ -531,7 +531,7 @@ export class MenuService {
   }
 
   // Price range operations
-  async getMenuPriceRange(restaurantId: string): Promise<{ min: number, max: number }> {
+  async getMenuPriceRange(restaurantId: number): Promise<{ min: number, max: number }> {
     const result = await this.menuItemRepository
       .createQueryBuilder('menuItem')
       .select('MIN(menuItem.price)', 'min')
@@ -547,7 +547,7 @@ export class MenuService {
   }
 
   // Update menu item rating
-  async updateMenuItemRating(menuItemId: string, newRating: number): Promise<MenuItem> {
+  async updateMenuItemRating(menuItemId: number, newRating: number): Promise<MenuItem> {
     const menuItem = await this.findMenuItemById(menuItemId);
 
     // In a real scenario, you'd calculate this based on all reviews
@@ -557,7 +557,7 @@ export class MenuService {
   }
 
   // Toggle menu item availability
-  async toggleMenuItemAvailability(id: string, user?: User): Promise<MenuItem> {
+  async toggleMenuItemAvailability(id: number, user?: User): Promise<MenuItem> {
     const menuItem = await this.findMenuItemById(id);
 
     // Check restaurant access permissions
@@ -577,7 +577,7 @@ export class MenuService {
   }
 
   // Get menu statistics
-  async getMenuStatistics(restaurantId: string, user?: User): Promise<any> {
+  async getMenuStatistics(restaurantId: number, user?: User): Promise<any> {
     // Check restaurant access permissions
     if (user) {
       await this.checkRestaurantAccess(user, restaurantId);

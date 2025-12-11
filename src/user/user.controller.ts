@@ -80,7 +80,7 @@ export class UserController {
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiParam({ name: 'id', description: 'User ID', type: String })
   findOne(@Param('id') id: string) {
-    return this.userService.findById(id);
+    return this.userService.findById(parseInt(id));
   }
 
   @Patch(':id')
@@ -91,7 +91,7 @@ export class UserController {
   @ApiParam({ name: 'id', description: 'User ID', type: String })
   @ApiBody({ type: UpdateUserDto })
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.userService.update(id, dto);
+    return this.userService.update(parseInt(id), dto);
   }
 
   @Delete(':id')
@@ -101,7 +101,7 @@ export class UserController {
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiParam({ name: 'id', description: 'User ID', type: String })
   remove(@Param('id') id: string) {
-    return this.userService.remove(id);
+    return this.userService.remove(parseInt(id));
   }
 
   @Get('me/dashboard')

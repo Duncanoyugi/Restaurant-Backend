@@ -14,11 +14,11 @@ import { RoomBooking } from './room-booking.entity';
 
 @Entity('room')
 export class Room {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'restaurant_id' })
-  restaurantId: string;
+  @Column({ name: 'restaurant_id' })
+  restaurantId: number;
 
   @Column({ type: 'varchar', length: 100 })
   name: string;

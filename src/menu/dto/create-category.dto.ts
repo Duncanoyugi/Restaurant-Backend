@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsInt, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsInt, Min, IsNumber } from 'class-validator';
 
 export class CreateCategoryDto {
   @IsString()
@@ -21,5 +21,8 @@ export class CreateCategoryDto {
   @IsBoolean()
   @IsOptional()
   active?: boolean;
-  restaurantId: import("c:/Users/X1 CARBON/OneDrive/Desktop/Teach2give 2/Restaurant/backend/src/user/entities/user.entity").User | undefined;
+
+  @IsNumber()
+  @IsOptional()
+  restaurantId?: number;
 }

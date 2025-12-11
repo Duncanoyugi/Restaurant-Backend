@@ -9,8 +9,8 @@ import { OrderStatus } from './order-status.entity';
 
 @Entity('status_catalog')
 export class StatusCatalog {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'varchar', length: 50, unique: true })
   name: string; // Pending, Preparing, Ready, Out for Delivery, Delivered, Cancelled

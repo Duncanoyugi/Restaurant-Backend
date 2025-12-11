@@ -12,8 +12,8 @@ import { City } from './city.entity';
 
 @Entity('state')
 export class State {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'varchar', length: 100 })
   name: string;
@@ -21,8 +21,8 @@ export class State {
   @Column({ type: 'varchar', length: 10 })
   code: string;
 
-  @Column({ type: 'uuid', name: 'country_id' })
-  countryId: string;
+  @Column({ name: 'country_id' })
+  countryId: number;
 
   @ManyToOne(() => Country, (country) => country.states)
   @JoinColumn({ name: 'country_id' })

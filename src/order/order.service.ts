@@ -42,7 +42,7 @@ export class OrderService {
   ) { }
 
   // Helper method to check order access
-  private async checkOrderAccess(user: User, orderId: string): Promise<Order> {
+  private async checkOrderAccess(user: User, orderId: number): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
       relations: ['restaurant', 'restaurant.owner', 'restaurant.staff', 'restaurant.staff.user']
@@ -79,7 +79,7 @@ export class OrderService {
   }
 
   // Helper method to check restaurant access
-  private async checkRestaurantAccess(user: User, restaurantId: string): Promise<boolean> {
+  private async checkRestaurantAccess(user: User, restaurantId: number): Promise<boolean> {
     if (user.role.name === UserRoleEnum.ADMIN) {
       return true;
     }
@@ -106,7 +106,7 @@ export class OrderService {
   }
 
   // Helper method to get user's restaurant ID
-  private async getUserRestaurantId(user: User): Promise<string> {
+  private async getUserRestaurantId(user: User): Promise<number> {
     if (user.role.name === UserRoleEnum.RESTAURANT_OWNER) {
       const restaurant = await this.restaurantRepository.findOne({
         where: { owner: { id: user.id } }
@@ -304,7 +304,7 @@ export class OrderService {
     return { data, total };
   }
 
-  async findOrderById(id: string, user?: User): Promise<Order> {
+  async findOrderById(id: number, user?: User): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: [
@@ -364,7 +364,7 @@ export class OrderService {
     return order;
   }
 
-  async updateOrder(id: string, updateOrderDto: UpdateOrderDto, user?: User): Promise<Order> {
+  async updateOrder(id: number, updateOrderDto: UpdateOrderDto, user?: User): Promise<Order> {
     const order = await this.findOrderById(id, user);
 
     // Check if user can update this order
@@ -462,7 +462,7 @@ export class OrderService {
     return await this.findOrderById(id, user);
   }
 
-  async removeOrder(id: string, user?: User): Promise<void> {
+  async removeOrder(id: number, user?: User): Promise<void> {
     const order = await this.findOrderById(id, user);
 
     // Check if user can delete this order
@@ -492,7 +492,7 @@ export class OrderService {
   }
 
   // Order Status operations
-  async updateOrderStatus(id: string, statusDto: OrderStatusDto, user?: User): Promise<Order> {
+  async updateOrderStatus(id: number, statusDto: OrderStatusDto, user?: User): Promise<Order> {
     const order = await this.findOrderById(id, user);
 
     // Check if user can update order status
@@ -541,7 +541,7 @@ export class OrderService {
     return await this.findOrderById(id, user);
   }
 
-  async getOrderStatusHistory(orderId: string, user?: User): Promise<OrderStatus[]> {
+  async getOrderStatusHistory(orderId: number, user?: User): Promise<OrderStatus[]> {
     const order = await this.findOrderById(orderId, user);
     return order.statusHistory.sort((a, b) =>
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -549,7 +549,7 @@ export class OrderService {
   }
 
   // Driver operations
-  async assignDriver(orderId: string, assignDriverDto: AssignDriverDto, user?: User): Promise<Order> {
+  async assignDriver(orderId: number, assignDriverDto: AssignDriverDto, user?: User): Promise<Order> {
     const order = await this.findOrderById(orderId, user);
 
     // Check if user can assign drivers
@@ -755,7 +755,7 @@ export class OrderService {
     };
   }
 
-  async getRestaurantOrdersToday(restaurantId: string, user?: User): Promise<{ count: number, revenue: number }> {
+  async getRestaurantOrdersToday(restaurantId: number, user?: User): Promise<{ count: number, revenue: number }> {
     // Check restaurant access
     if (user && (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
       const hasAccess = await this.checkRestaurantAccess(user, restaurantId);
@@ -813,7 +813,7 @@ export class OrderService {
   private async calculateOrderPrices(orderData: CreateOrderDto): Promise<{
     totalPrice: number;
     finalPrice: number;
-    itemPrices: Array<{ menuItemId: string; unitPrice: number; totalPrice: number }>;
+    itemPrices: Array<{ menuItemId: number; unitPrice: number; totalPrice: number }>;
   }> {
     // This would typically fetch menu item prices from the database
     // For now, we'll use mock prices - in production, you'd query the menu items
@@ -851,7 +851,7 @@ export class OrderService {
     return `ORD${timestamp}${random}`;
   }
 
-  private async validateStatusTransition(currentStatusId: string, newStatusId: string): Promise<void> {
+  private async validateStatusTransition(currentStatusId: number, newStatusId: number): Promise<void> {
     // Get current and new status names
     const [currentStatus, newStatus] = await Promise.all([
       this.statusCatalogRepository.findOne({ where: { id: currentStatusId } }),
@@ -879,7 +879,7 @@ export class OrderService {
     }
   }
 
-  private async handleStatusChangeActions(orderId: string, newStatusName: string): Promise<void> {
+  private async handleStatusChangeActions(orderId: number, newStatusName: string): Promise<void> {
     switch (newStatusName) {
       case 'Ready':
         // Notify available drivers
@@ -900,17 +900,17 @@ export class OrderService {
     }
   }
 
-  private async notifyDrivers(orderId: string): Promise<void> {
+  private async notifyDrivers(orderId: number): Promise<void> {
     // Implementation for notifying drivers
     console.log(`Notifying drivers for order ${orderId}`);
   }
 
-  private async startDeliveryTracking(orderId: string): Promise<void> {
+  private async startDeliveryTracking(orderId: number): Promise<void> {
     // Implementation for starting delivery tracking
     console.log(`Starting delivery tracking for order ${orderId}`);
   }
 
-  private async recordDeliveryTime(orderId: string): Promise<void> {
+  private async recordDeliveryTime(orderId: number): Promise<void> {
     const order = await this.orderRepository.findOne({ where: { id: orderId } });
     if (order) {
       order.actualDeliveryTime = new Date();
@@ -918,8 +918,53 @@ export class OrderService {
     }
   }
 
-  private async processOrderCompletion(orderId: string): Promise<void> {
+  private async processOrderCompletion(orderId: number): Promise<void> {
     // Implementation for order completion processing
     console.log(`Processing completion for order ${orderId}`);
+  }
+
+  // Helper method to find status by name
+  async findStatusByName(name: string): Promise<StatusCatalog> {
+    const status = await this.statusCatalogRepository.findOne({
+      where: { name }
+    });
+
+    if (!status) {
+      throw new NotFoundException(`${name} status not found`);
+    }
+
+    return status;
+  }
+
+  // Specialized method for customer order cancellation
+  async cancelCustomerOrder(orderId: number, reason: string, user: User): Promise<Order> {
+    const order = await this.findOrderById(orderId, user);
+
+    // Verify this is the customer's own order
+    if (order.userId !== user.id) {
+      throw new ForbiddenException('You can only cancel your own orders');
+    }
+
+    // Find the "Cancelled" status
+    const cancelledStatus = await this.findStatusByName('Cancelled');
+
+    // Validate status transition
+    await this.validateStatusTransition(order.statusId, cancelledStatus.id);
+
+    // Update order status
+    order.statusId = cancelledStatus.id;
+    await this.orderRepository.save(order);
+
+    // Add to status history
+    const statusHistory = this.orderStatusRepository.create({
+      orderId: orderId,
+      statusCatalogId: cancelledStatus.id,
+      notes: `Order cancelled by customer. Reason: ${reason}`,
+      updatedBy: user.id
+    });
+
+    await this.orderStatusRepository.save(statusHistory);
+
+    return await this.findOrderById(orderId, user);
   }
 }

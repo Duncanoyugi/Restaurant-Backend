@@ -13,14 +13,14 @@ import { User } from '../../user/entities/user.entity';
 @Entity('delivery_tracking')
 @Index(['orderId', 'createdAt'])
 export class DeliveryTracking {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'order_id' })
-  orderId: string;
+  @Column({ name: 'order_id' })
+  orderId: number;
 
-  @Column({ type: 'uuid', name: 'driver_id' })
-  driverId: string;
+  @Column({ name: 'driver_id' })
+  driverId: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 7 })
   latitude: number;

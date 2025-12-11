@@ -1,3 +1,4 @@
+// backend\src\payment\entities\invoice.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -10,11 +11,11 @@ import { Payment } from './payment.entity';
 
 @Entity('invoice')
 export class Invoice {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn() // Changed to autoincremental integer ID
+  id: number; // Changed from string to number
 
-  @Column({ type: 'uuid', name: 'payment_id' })
-  paymentId: string;
+  @Column({ type: 'int', name: 'payment_id' })
+  paymentId: number;
 
   @Column({ type: 'varchar', length: 50, unique: true, name: 'invoice_number' })
   invoiceNumber: string;

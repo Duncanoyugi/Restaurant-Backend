@@ -1,9 +1,9 @@
-import { IsUUID, IsNumber, IsNotEmpty, IsString, IsOptional } from 'class-validator';
+import { IsNumber, IsNotEmpty, IsString, IsOptional, IsInt } from 'class-validator';
 
 export class StockAdjustmentDto {
-  @IsUUID()
+  @IsInt()
   @IsNotEmpty()
-  inventoryItemId: string;
+  inventoryItemId: number;  // Changed from string/UUID to number
 
   @IsNumber()
   @IsNotEmpty()
@@ -13,7 +13,7 @@ export class StockAdjustmentDto {
   @IsNotEmpty()
   reason: string;
 
-  @IsUUID()
+  @IsInt()
   @IsOptional()
-  performedBy?: string;
+  performedBy?: number;     // Changed from string/UUID to number
 }

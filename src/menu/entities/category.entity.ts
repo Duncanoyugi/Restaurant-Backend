@@ -12,8 +12,8 @@ import { MenuItem } from './menu.entity';
 
 @Entity('category')
 export class Category {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'varchar', length: 100 })
   name: string;
@@ -40,7 +40,7 @@ export class Category {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
   @Column({ name: 'restaurant_id', nullable: true })
-  restaurantId: string;
+  restaurantId: number;
 
   @ManyToOne('User', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'restaurant_id' })

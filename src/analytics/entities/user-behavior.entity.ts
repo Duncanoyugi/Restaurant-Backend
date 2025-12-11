@@ -13,11 +13,11 @@ import { User } from '../../user/entities/user.entity';
 @Index(['userId', 'sessionDate'])
 @Index(['sessionDate'])
 export class UserBehavior {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'user_id' })
-  userId: string;
+  @Column({ name: 'user_id' })
+  userId: number;
 
   @Column({ type: 'date', name: 'session_date' })
   sessionDate: Date;

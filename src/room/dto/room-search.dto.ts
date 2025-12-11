@@ -2,9 +2,10 @@ import { IsOptional, IsUUID, IsNumber, IsBoolean, IsDateString, IsNotEmpty } fro
 import { Type } from 'class-transformer';
 
 export class RoomSearchDto {
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsOptional()
-  restaurantId?: string;
+  restaurantId?: number;
 
   @IsNumber()
   @Type(() => Number)

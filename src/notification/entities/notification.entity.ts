@@ -80,11 +80,11 @@ export enum NotificationChannel {
 @Index(['type', 'createdAt'])
 @Index(['isRead', 'createdAt'])
 export class Notification {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'user_id' })
-  userId: string;
+  @Column({ name: 'user_id' })
+  userId: number;
 
   @Column({ type: 'varchar', length: 100 })
   type: NotificationType;

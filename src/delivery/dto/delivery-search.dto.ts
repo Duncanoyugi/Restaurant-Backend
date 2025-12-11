@@ -1,30 +1,49 @@
-import { IsOptional, IsUUID, IsDateString, IsNumber } from 'class-validator';
+// backend\src\delivery\dto\delivery-search.dto.ts
+import { IsOptional, IsString, IsDateString, IsNumber, IsEnum } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class DeliverySearchDto {
-  @IsUUID()
+  @ApiProperty({ description: 'Order ID filter', required: false })
   @IsOptional()
-  driverId?: string;
+  @IsNumber()
+  @Type(() => Number)
+  orderId?: number;
 
-  @IsUUID()
+  @ApiProperty({ description: 'Driver ID filter', required: false })
   @IsOptional()
-  orderId?: string;
+  @IsNumber()
+  @Type(() => Number)
+  driverId?: number;
 
+  @ApiProperty({ 
+    description: 'Status filter', 
+    enum: ['assigned', 'picked_up', 'on_the_way', 'nearby', 'arrived', 'delivered'],
+    required: false 
+  })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @ApiProperty({ description: 'Start date for filtering', required: false })
+  @IsOptional()
   @IsDateString()
-  @IsOptional()
   startDate?: string;
 
-  @IsDateString()
+  @ApiProperty({ description: 'End date for filtering', required: false })
   @IsOptional()
+  @IsDateString()
   endDate?: string;
 
+  @ApiProperty({ description: 'Page number for pagination', required: false, default: 1 })
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
-  @IsOptional()
   page?: number = 1;
 
+  @ApiProperty({ description: 'Items per page', required: false, default: 20 })
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
-  @IsOptional()
   limit?: number = 20;
 }

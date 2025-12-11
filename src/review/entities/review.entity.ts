@@ -17,20 +17,20 @@ import { MenuItem } from '../../menu/entities/menu.entity';
 @Index(['restaurantId', 'createdAt'])
 @Index(['menuItemId', 'createdAt'])
 export class Review {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ type: 'uuid', name: 'user_id' })
-  userId: string;
+  @Column({ name: 'user_id' })
+  userId: number;
 
-  @Column({ type: 'uuid', nullable: true, name: 'restaurant_id' })
-  restaurantId: string;
+  @Column({ nullable: true, name: 'restaurant_id' })
+  restaurantId: number;
 
-  @Column({ type: 'uuid', nullable: true, name: 'menu_item_id' })
-  menuItemId: string;
+  @Column({ nullable: true, name: 'menu_item_id' })
+  menuItemId: number;
 
-  @Column({ type: 'uuid', nullable: true, name: 'order_id' })
-  orderId: string;
+  @Column({ nullable: true, name: 'order_id' })
+  orderId: number;
 
   @Column({ type: 'int' })
   rating: number; // 1-5

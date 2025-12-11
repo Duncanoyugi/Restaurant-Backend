@@ -62,7 +62,7 @@ export class LocationService {
     }
 
     // Check if user is accessing their own resource
-    if (resourceUserId && user.id !== resourceUserId) {
+    if (resourceUserId && user.id.toString() !== resourceUserId) {
       throw new ForbiddenException('You can only access your own resources');
     }
   }
@@ -80,16 +80,16 @@ export class LocationService {
     });
   }
 
-  async findOneCountry(id: string): Promise<Country> {
+  async findOneCountry(id: number): Promise<Country> {
     const country = await this.countryRepository.findOne({
       where: { id },
       relations: ['states', 'states.cities'],
     });
-    
+
     if (!country) {
       throw new NotFoundException(`Country with ID ${id} not found`);
     }
-    
+
     return country;
   }
 
@@ -109,13 +109,13 @@ export class LocationService {
     return country;
   }
 
-  async updateCountry(id: string, updateCountryDto: UpdateCountryDto): Promise<Country> {
+  async updateCountry(id: number, updateCountryDto: UpdateCountryDto): Promise<Country> {
     const country = await this.findOneCountry(id);
     Object.assign(country, updateCountryDto);
     return await this.countryRepository.save(country);
   }
 
-  async removeCountry(id: string): Promise<void> {
+  async removeCountry(id: number): Promise<void> {
     const country = await this.findOneCountry(id);
     await this.countryRepository.remove(country);
   }
@@ -133,20 +133,20 @@ export class LocationService {
     });
   }
 
-  async findOneState(id: string): Promise<State> {
+  async findOneState(id: number): Promise<State> {
     const state = await this.stateRepository.findOne({
       where: { id },
       relations: ['country', 'cities'],
     });
-    
+
     if (!state) {
       throw new NotFoundException(`State with ID ${id} not found`);
     }
-    
+
     return state;
   }
 
-  async findStatesByCountry(countryId: string): Promise<State[]> {
+  async findStatesByCountry(countryId: number): Promise<State[]> {
     return await this.stateRepository.find({
       where: { countryId },
       relations: ['cities'],
@@ -154,20 +154,20 @@ export class LocationService {
     });
   }
 
-  async findStateByNameAndCountry(stateName: string, countryId: string): Promise<State | null> {
+  async findStateByNameAndCountry(stateName: string, countryId: number): Promise<State | null> {
     return await this.stateRepository.findOne({
       where: { name: stateName, countryId },
       relations: ['cities'],
     });
   }
 
-  async updateState(id: string, updateStateDto: UpdateStateDto): Promise<State> {
+  async updateState(id: number, updateStateDto: UpdateStateDto): Promise<State> {
     const state = await this.findOneState(id);
     Object.assign(state, updateStateDto);
     return await this.stateRepository.save(state);
   }
 
-  async removeState(id: string): Promise<void> {
+  async removeState(id: number): Promise<void> {
     const state = await this.findOneState(id);
     await this.stateRepository.remove(state);
   }
@@ -185,20 +185,20 @@ export class LocationService {
     });
   }
 
-  async findOneCity(id: string): Promise<City> {
+  async findOneCity(id: number): Promise<City> {
     const city = await this.cityRepository.findOne({
       where: { id },
       relations: ['state', 'state.country', 'addresses'],
     });
-    
+
     if (!city) {
       throw new NotFoundException(`City with ID ${id} not found`);
     }
-    
+
     return city;
   }
 
-  async findCitiesByState(stateId: string): Promise<City[]> {
+  async findCitiesByState(stateId: number): Promise<City[]> {
     return await this.cityRepository.find({
       where: { stateId },
       relations: ['state'],
@@ -206,20 +206,20 @@ export class LocationService {
     });
   }
 
-  async findCityByNameAndState(cityName: string, stateId: string): Promise<City | null> {
+  async findCityByNameAndState(cityName: string, stateId: number): Promise<City | null> {
     return await this.cityRepository.findOne({
       where: { name: cityName, stateId },
       relations: ['state'],
     });
   }
 
-  async updateCity(id: string, updateCityDto: UpdateCityDto): Promise<City> {
+  async updateCity(id: number, updateCityDto: UpdateCityDto): Promise<City> {
     const city = await this.findOneCity(id);
     Object.assign(city, updateCityDto);
     return await this.cityRepository.save(city);
   }
 
-  async removeCity(id: string): Promise<void> {
+  async removeCity(id: number): Promise<void> {
     const city = await this.findOneCity(id);
     await this.cityRepository.remove(city);
   }
@@ -243,25 +243,25 @@ export class LocationService {
     });
   }
 
-  async findOneAddress(id: string, user?: User): Promise<Address> {
+  async findOneAddress(id: number, user?: User): Promise<Address> {
     const address = await this.addressRepository.findOne({
       where: { id },
       relations: ['city', 'city.state', 'city.state.country', 'user'],
     });
-    
+
     if (!address) {
       throw new NotFoundException(`Address with ID ${id} not found`);
     }
 
     // Check if user has permission to access this address
     if (user) {
-      this.checkUserPermission(user, undefined, address.userId);
+      this.checkUserPermission(user, undefined, address.userId?.toString());
     }
-    
+
     return address;
   }
 
-  async findAddressesByUser(userId: string): Promise<Address[]> {
+  async findAddressesByUser(userId: number): Promise<Address[]> {
     return await this.addressRepository.find({
       where: { userId },
       relations: ['city', 'city.state', 'city.state.country'],
@@ -270,7 +270,7 @@ export class LocationService {
     });
   }
 
-  async findDefaultAddress(userId: string): Promise<Address | null> {
+  async findDefaultAddress(userId: number): Promise<Address | null> {
     return await this.addressRepository.findOne({
       where: { userId, isDefault: true },
       relations: ['city', 'city.state', 'city.state.country'],
@@ -278,12 +278,12 @@ export class LocationService {
     });
   }
 
-  async updateAddress(id: string, updateAddressDto: UpdateAddressDto, user?: User): Promise<Address> {
+  async updateAddress(id: number, updateAddressDto: UpdateAddressDto, user?: User): Promise<Address> {
     const address = await this.findOneAddress(id);
 
     // Check if user has permission to update this address
     if (user) {
-      this.checkUserPermission(user, undefined, address.userId);
+      this.checkUserPermission(user, undefined, address.userId?.toString());
     }
 
     // If setting as default and has userId, unset other defaults for this user
@@ -295,18 +295,18 @@ export class LocationService {
     return await this.addressRepository.save(address);
   }
 
-  async removeAddress(id: string, user?: User): Promise<void> {
+  async removeAddress(id: number, user?: User): Promise<void> {
     const address = await this.findOneAddress(id);
 
     // Check if user has permission to delete this address
     if (user) {
-      this.checkUserPermission(user, undefined, address.userId);
+      this.checkUserPermission(user, undefined, address.userId?.toString());
     }
 
     await this.addressRepository.softRemove(address);
   }
 
-  private async unsetUserDefaults(userId: string): Promise<void> {
+  private async unsetUserDefaults(userId: number): Promise<void> {
     await this.addressRepository.update(
       { userId, isDefault: true },
       { isDefault: false }
@@ -384,17 +384,17 @@ export class LocationService {
 
   // Delivery validation - Accessible by Customers, Restaurant Staff, and Restaurant Owners
   async validateDeliveryAddress(
-    restaurantId: string, 
-    addressId: string, 
+    restaurantId: number,
+    addressId: number,
     user?: User
-  ): Promise<{ 
-    valid: boolean; 
-    distance?: number; 
+  ): Promise<{
+    valid: boolean;
+    distance?: number;
     estimatedTime?: number;
     cost?: number;
   }> {
     const address = await this.findOneAddress(addressId, user);
-    
+
     // For Kenya, simple validation - check if restaurant is in the same city
     const restaurantCity = await this.cityRepository
       .createQueryBuilder('city')

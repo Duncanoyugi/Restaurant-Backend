@@ -9,13 +9,13 @@ import {
 } from 'class-validator';
 
 export class CreateRestaurantStaffDto {
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  userId: string;
+  userId: number;
 
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  restaurantId: string;
+  restaurantId: number;
 
   @IsString()
   @IsNotEmpty()

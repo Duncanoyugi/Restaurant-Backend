@@ -29,7 +29,7 @@ export class ReviewService {
     private userRepository: Repository<User>,
   ) {}
 
-  async create(createReviewDto: CreateReviewDto, userId?: string, userRole?: UserRoleEnum) {
+  async create(createReviewDto: CreateReviewDto, userId?: number, userRole?: UserRoleEnum) {
     // Only customers and admins can create reviews
     if (!this.canCreateReview(userRole)) {
       throw new ForbiddenException('Only customers and admins can create reviews');
@@ -147,7 +147,7 @@ export class ReviewService {
     };
   }
 
-  async findOne(id: string, userId?: string, userRole?: UserRoleEnum) {
+  async findOne(id: number, userId?: number, userRole?: UserRoleEnum) {
     const review = await this.reviewRepository.findOne({
       where: { id },
       relations: ['user', 'restaurant', 'menuItem'],
@@ -165,7 +165,7 @@ export class ReviewService {
     return this.formatReviewResponse(review);
   }
 
-  async findByRestaurant(restaurantId: string, query: ReviewQueryDto, userId?: string, userRole?: UserRoleEnum) {
+  async findByRestaurant(restaurantId: number, query: ReviewQueryDto, userId?: number, userRole?: UserRoleEnum) {
     // FIX: Provide default values
     const page = query.page || 1;
     const limit = query.limit || 10;
@@ -202,7 +202,7 @@ export class ReviewService {
     };
   }
 
-  async findByMenuItem(menuItemId: string, query: ReviewQueryDto, userId?: string, userRole?: UserRoleEnum) {
+  async findByMenuItem(menuItemId: number, query: ReviewQueryDto, userId?: number, userRole?: UserRoleEnum) {
     // FIX: Provide default values
     const page = query.page || 1;
     const limit = query.limit || 10;
@@ -239,7 +239,7 @@ export class ReviewService {
     };
   }
 
-  async update(id: string, updateReviewDto: UpdateReviewDto, userId?: string, userRole?: UserRoleEnum) {
+  async update(id: number, updateReviewDto: UpdateReviewDto, userId?: number, userRole?: UserRoleEnum) {
     const review = await this.reviewRepository.findOne({
       where: { id },
       relations: ['user', 'restaurant', 'menuItem'],
@@ -275,7 +275,7 @@ export class ReviewService {
     return this.formatReviewResponse(updatedReview);
   }
 
-  async remove(id: string, userId?: string, userRole?: UserRoleEnum) {
+  async remove(id: number, userId?: number, userRole?: UserRoleEnum) {
     const review = await this.reviewRepository.findOne({
       where: { id },
       relations: ['user', 'restaurant', 'menuItem'],
@@ -306,7 +306,7 @@ export class ReviewService {
     // For 204 No Content, we don't return any data
   }
 
-  async addAdminResponse(id: string, responseDto: ReviewResponseDto, userId?: string, userRole?: UserRoleEnum) {
+  async addAdminResponse(id: number, responseDto: ReviewResponseDto, userId?: number, userRole?: UserRoleEnum) {
     const review = await this.reviewRepository.findOne({
       where: { id },
       relations: ['user', 'restaurant', 'menuItem'],
@@ -329,7 +329,7 @@ export class ReviewService {
     return this.formatReviewResponse(updatedReview);
   }
 
-  async verifyReview(id: string, userId?: string, userRole?: UserRoleEnum) {
+  async verifyReview(id: number, userId?: number, userRole?: UserRoleEnum) {
     const review = await this.reviewRepository.findOne({
       where: { id },
       relations: ['user', 'restaurant', 'menuItem'],
@@ -351,7 +351,7 @@ export class ReviewService {
     return this.formatReviewResponse(updatedReview);
   }
 
-  async getRestaurantReviewStats(restaurantId: string, userId?: string, userRole?: UserRoleEnum) {
+  async getRestaurantReviewStats(restaurantId: number, userId?: number, userRole?: UserRoleEnum) {
     // Check if user can view restaurant stats
     if (!this.canViewRestaurantStats(userRole)) {
       throw new ForbiddenException('You do not have permission to view restaurant statistics');
@@ -386,7 +386,7 @@ export class ReviewService {
     };
   }
 
-  async getMenuItemReviewStats(menuItemId: string) {
+  async getMenuItemReviewStats(menuItemId: number) {
     const stats = await this.reviewRepository
       .createQueryBuilder('review')
       .select('COUNT(review.id)', 'totalReviews')
@@ -406,7 +406,7 @@ export class ReviewService {
     return userRole === UserRoleEnum.CUSTOMER || userRole === UserRoleEnum.ADMIN;
   }
 
-  private canViewReview(review: Review, userId?: string, userRole?: UserRoleEnum): boolean {
+  private canViewReview(review: Review, userId?: number, userRole?: UserRoleEnum): boolean {
     // Admin can view all reviews
     if (userRole === UserRoleEnum.ADMIN) return true;
     
@@ -417,7 +417,7 @@ export class ReviewService {
     return review.verified === true;
   }
 
-  private canModifyReview(review: Review, userId?: string, userRole?: UserRoleEnum): boolean {
+  private canModifyReview(review: Review, userId?: number, userRole?: UserRoleEnum): boolean {
     // Admin can modify any review
     if (userRole === UserRoleEnum.ADMIN) return true;
     
@@ -425,7 +425,7 @@ export class ReviewService {
     return userId !== undefined && review.userId === userId;
   }
 
-  private async canDeleteReview(review: Review, userId?: string, userRole?: UserRoleEnum): Promise<boolean> {
+  private async canDeleteReview(review: Review, userId?: number, userRole?: UserRoleEnum): Promise<boolean> {
     // Admin can delete any review
     if (userRole === UserRoleEnum.ADMIN) return true;
     
@@ -438,7 +438,7 @@ export class ReviewService {
     return userId !== undefined && review.userId === userId;
   }
 
-  private async canRespondToReview(review: Review, userId?: string, userRole?: UserRoleEnum): Promise<boolean> {
+  private async canRespondToReview(review: Review, userId?: number, userRole?: UserRoleEnum): Promise<boolean> {
     // Admin can respond to any review
     if (userRole === UserRoleEnum.ADMIN) return true;
     
@@ -450,7 +450,7 @@ export class ReviewService {
     return false;
   }
 
-  private async canVerifyReview(review: Review, userId?: string, userRole?: UserRoleEnum): Promise<boolean> {
+  private async canVerifyReview(review: Review, userId?: number, userRole?: UserRoleEnum): Promise<boolean> {
     // Admin can verify any review
     if (userRole === UserRoleEnum.ADMIN) return true;
     
@@ -468,7 +468,7 @@ export class ReviewService {
            userRole === UserRoleEnum.RESTAURANT_STAFF;
   }
 
-  private async isRestaurantOwner(restaurantId: string, userId?: string): Promise<boolean> {
+  private async isRestaurantOwner(restaurantId: number, userId?: number): Promise<boolean> {
     if (!userId) return false;
     
     const restaurant = await this.restaurantRepository.findOne({
@@ -489,7 +489,7 @@ export class ReviewService {
     }
   }
 
-  private async updateRestaurantRating(restaurantId: string) {
+  private async updateRestaurantRating(restaurantId: number) {
     const stats = await this.reviewRepository
       .createQueryBuilder('review')
       .select('AVG(review.rating)', 'averageRating')
@@ -503,7 +503,7 @@ export class ReviewService {
     });
   }
 
-  private async updateMenuItemRating(menuItemId: string) {
+  private async updateMenuItemRating(menuItemId: number) {
     const stats = await this.reviewRepository
       .createQueryBuilder('review')
       .select('AVG(review.rating)', 'averageRating')

@@ -1,10 +1,10 @@
-import { IsArray, IsEnum, IsOptional, IsString, IsObject } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString, IsObject, IsNumber } from 'class-validator';
 import { NotificationType, NotificationPriority, NotificationChannel } from '../entities/notification.entity';
 
 export class BulkNotificationDto {
   @IsArray()
-  @IsString({ each: true })
-  userIds: string[];
+  @IsNumber({}, { each: true })
+  userIds: number[];
 
   @IsEnum(NotificationType)
   type: NotificationType;

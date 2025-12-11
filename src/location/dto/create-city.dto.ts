@@ -1,13 +1,13 @@
-import { IsString, IsNotEmpty, IsUUID, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsInt } from 'class-validator';
 
 export class CreateCityDto {
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @IsUUID()
+  @IsInt()
   @IsNotEmpty()
-  stateId: string;
+  stateId: number;  // Changed from string/UUID to number
 
   @IsNumber()
   @IsOptional()

@@ -1,15 +1,15 @@
-import { 
-  IsString, 
-  IsNotEmpty, 
-  IsUUID, 
-  IsOptional, 
-  IsDateString 
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsDateString
 } from 'class-validator';
 
 export class CreateShiftDto {
-  @IsUUID()
+  @IsNumber()
   @IsNotEmpty()
-  staffId: string;
+  staffId: number;
 
   @IsDateString()
   @IsNotEmpty()

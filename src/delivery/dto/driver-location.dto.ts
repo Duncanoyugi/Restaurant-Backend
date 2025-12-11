@@ -1,30 +1,29 @@
-import { IsUUID, IsNotEmpty, IsNumber, Min, Max, IsOptional } from 'class-validator';
+// backend\src\delivery\dto\driver-location.dto.ts
+import { IsNumber, IsOptional, Min, Max } from 'class-validator';
 
 export class DriverLocationDto {
-  @IsUUID()
-  @IsNotEmpty()
-  driverId: string;
+  @IsNumber()
+  driverId: number;
 
   @IsNumber()
   @Min(-90)
   @Max(90)
-  @IsNotEmpty()
   latitude: number;
 
   @IsNumber()
   @Min(-180)
   @Max(180)
-  @IsNotEmpty()
   longitude: number;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  @IsOptional()
+  @Max(300)
   speed?: number;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
   @Max(360)
-  @IsOptional()
   heading?: number;
 }

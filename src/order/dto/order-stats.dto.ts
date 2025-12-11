@@ -1,9 +1,11 @@
-import { IsUUID, IsDateString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsNumber, IsDateString, IsNotEmpty, IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class OrderStatsDto {
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsOptional()
-  restaurantId?: string;
+  restaurantId?: number;
 
   @IsDateString()
   @IsNotEmpty()

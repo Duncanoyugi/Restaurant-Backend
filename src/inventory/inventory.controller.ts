@@ -80,8 +80,8 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Supplier retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Supplier not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
-  @ApiParam({ name: 'id', description: 'Supplier ID', type: String })
-  findSupplierById(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Supplier ID', type: Number })
+  findSupplierById(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.inventoryService.findSupplierById(id, req.user);
   }
 
@@ -92,10 +92,10 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Supplier updated successfully' })
   @ApiResponse({ status: 404, description: 'Supplier not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
-  @ApiParam({ name: 'id', description: 'Supplier ID', type: String })
+  @ApiParam({ name: 'id', description: 'Supplier ID', type: Number })
   @ApiBody({ type: UpdateSupplierDto })
   updateSupplier(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateSupplierDto: UpdateSupplierDto,
     @Request() req
   ) {
@@ -109,8 +109,8 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Supplier deleted successfully' })
   @ApiResponse({ status: 404, description: 'Supplier not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
-  @ApiParam({ name: 'id', description: 'Supplier ID', type: String })
-  removeSupplier(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Supplier ID', type: Number })
+  removeSupplier(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.inventoryService.removeSupplier(id, req.user);
   }
 
@@ -145,8 +145,8 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Inventory item retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
-  @ApiParam({ name: 'id', description: 'Inventory item ID', type: String })
-  findInventoryItemById(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Inventory item ID', type: Number })
+  findInventoryItemById(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.inventoryService.findInventoryItemById(id, req.user);
   }
 
@@ -157,10 +157,10 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Inventory item updated successfully' })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
-  @ApiParam({ name: 'id', description: 'Inventory item ID', type: String })
+  @ApiParam({ name: 'id', description: 'Inventory item ID', type: Number })
   @ApiBody({ type: UpdateInventoryItemDto })
   updateInventoryItem(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateInventoryItemDto: UpdateInventoryItemDto,
     @Request() req
   ) {
@@ -174,8 +174,8 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Inventory item deleted successfully' })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
-  @ApiParam({ name: 'id', description: 'Inventory item ID', type: String })
-  removeInventoryItem(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  @ApiParam({ name: 'id', description: 'Inventory item ID', type: Number })
+  removeInventoryItem(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.inventoryService.removeInventoryItem(id, req.user);
   }
 
@@ -199,10 +199,10 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Stock transactions retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Inventory item not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
-  @ApiParam({ name: 'id', description: 'Inventory item ID', type: String })
+  @ApiParam({ name: 'id', description: 'Inventory item ID', type: Number })
   @ApiQuery({ name: 'days', description: 'Number of days to look back', required: false, type: Number })
   getStockTransactions(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
     @Request() req
   ) {
@@ -243,8 +243,8 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Low stock items retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getLowStockItems(@Param('restaurantId', ParseUUIDPipe) restaurantId: string, @Request() req) {
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
+  getLowStockItems(@Param('restaurantId', ParseIntPipe) restaurantId: number, @Request() req) {
     return this.inventoryService.getLowStockItems(restaurantId, req.user);
   }
 
@@ -255,10 +255,10 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Expiring items retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
   @ApiQuery({ name: 'days', description: 'Days until expiration', required: false, type: Number })
   getExpiringItems(
-    @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
     @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number,
     @Request() req
   ) {
@@ -272,8 +272,8 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Inventory value calculated successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getInventoryValue(@Param('restaurantId', ParseUUIDPipe) restaurantId: string, @Request() req) {
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
+  getInventoryValue(@Param('restaurantId', ParseIntPipe) restaurantId: number, @Request() req) {
     return this.inventoryService.getInventoryValue(restaurantId, req.user);
   }
 
@@ -284,8 +284,8 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Category breakdown retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getCategoryBreakdown(@Param('restaurantId', ParseUUIDPipe) restaurantId: string, @Request() req) {
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
+  getCategoryBreakdown(@Param('restaurantId', ParseIntPipe) restaurantId: number, @Request() req) {
     return this.inventoryService.getCategoryBreakdown(restaurantId, req.user);
   }
 
@@ -296,10 +296,10 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Stock movement report generated successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant Owner access required' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
   @ApiQuery({ name: 'days', description: 'Number of days to analyze', required: false, type: Number })
   getStockMovementReport(
-    @Param('restaurantId', ParseUUIDPipe) restaurantId: string,
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
     @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
     @Request() req
   ) {
@@ -313,8 +313,8 @@ export class InventoryController {
   @ApiResponse({ status: 200, description: 'Reorder items retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Restaurant access required' })
-  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
-  getItemsNeedingReorder(@Param('restaurantId', ParseUUIDPipe) restaurantId: string, @Request() req) {
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
+  getItemsNeedingReorder(@Param('restaurantId', ParseIntPipe) restaurantId: number, @Request() req) {
     return this.inventoryService.getItemsNeedingReorder(restaurantId, req.user);
   }
 

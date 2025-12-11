@@ -30,7 +30,7 @@ import { UserStatus } from '../user/entities/user.entity';
 
 // Strong typing for JWT payload
 interface JwtUserPayload {
-  sub: string;
+  sub: number;
   email: string;
   role: string;
 }
