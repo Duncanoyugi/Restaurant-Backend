@@ -9,6 +9,8 @@ import { Repository, Between, Like, In } from 'typeorm';
 import { Restaurant } from './entities/restaurant.entity';
 import { RestaurantStaff } from './entities/restaurant-staff.entity';
 import { Shift } from './entities/shift.entity';
+import { StaffAssignment } from './entities/staff-assignment.entity';
+import { DriverAssignment } from './entities/driver-assignment.entity';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { CreateRestaurantStaffDto } from './dto/create-restaurant-staff.dto';
@@ -16,6 +18,8 @@ import { UpdateRestaurantStaffDto } from './dto/update-restaurant-staff.dto';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
 import { RestaurantSearchDto } from './dto/restaurant-search.dto';
+import { CreateStaffAssignmentDto } from './dto/create-staff-assignment.dto';
+import { CreateDriverAssignmentDto } from './dto/create-driver-assignment.dto';
 
 @Injectable()
 export class RestaurantService {
@@ -26,6 +30,10 @@ export class RestaurantService {
     private staffRepository: Repository<RestaurantStaff>,
     @InjectRepository(Shift)
     private shiftRepository: Repository<Shift>,
+    @InjectRepository(StaffAssignment)
+    private staffAssignmentRepository: Repository<StaffAssignment>,
+    @InjectRepository(DriverAssignment)
+    private driverAssignmentRepository: Repository<DriverAssignment>,
   ) { }
 
   // Restaurant CRUD operations
@@ -81,9 +89,9 @@ export class RestaurantService {
     return { data, total };
   }
 
-  async findOne(id: string): Promise<Restaurant> {
+  async findOne(id: number): Promise<Restaurant> {
     const restaurant = await this.restaurantRepository.findOne({
-      where: { id: parseInt(id) },
+      where: { id },
       relations: [
         'city',
         'city.state',
@@ -102,7 +110,7 @@ export class RestaurantService {
   }
 
   async update(id: string, updateRestaurantDto: UpdateRestaurantDto): Promise<Restaurant> {
-    const restaurant = await this.findOne(id);
+    const restaurant = await this.findOne(parseInt(id));
 
     // Check if email is being updated and if it already exists
     if (updateRestaurantDto.email && updateRestaurantDto.email !== restaurant.email) {
@@ -122,7 +130,7 @@ export class RestaurantService {
   }
 
   async remove(id: string): Promise<void> {
-    const restaurant = await this.findOne(id);
+    const restaurant = await this.findOne(parseInt(id));
     await this.restaurantRepository.softRemove(restaurant);
   }
 
@@ -288,7 +296,7 @@ export class RestaurantService {
   }
 
   async getRestaurantStatistics(restaurantId: string): Promise<any> {
-    const restaurant = await this.findOne(restaurantId);
+    const restaurant = await this.findOne(parseInt(restaurantId));
 
     const [totalStaff, activeShifts, totalMenuItems] = await Promise.all([
       this.staffRepository.count({ where: { restaurantId: parseInt(restaurantId), active: true } }),
@@ -371,5 +379,113 @@ export class RestaurantService {
       where: { userId: parseInt(userId), restaurantId: parseInt(restaurantId), active: true }
     });
     return !!staff;
+  }
+
+  // Staff Assignment methods
+  async createStaffAssignment(createStaffAssignmentDto: CreateStaffAssignmentDto): Promise<StaffAssignment> {
+    // Check if user is already assigned to any restaurant as staff
+    const existingAssignment = await this.staffAssignmentRepository.findOne({
+      where: { staffId: parseInt(createStaffAssignmentDto.staffId) }
+    });
+
+    if (existingAssignment) {
+      throw new ConflictException('User is already assigned as staff to a restaurant');
+    }
+
+    const staffAssignment = this.staffAssignmentRepository.create({
+      ...createStaffAssignmentDto,
+      staffId: parseInt(createStaffAssignmentDto.staffId),
+      restaurantId: parseInt(createStaffAssignmentDto.restaurantId)
+    });
+    return await this.staffAssignmentRepository.save(staffAssignment);
+  }
+
+  async findStaffAssignmentsByRestaurant(restaurantId: string): Promise<StaffAssignment[]> {
+    return await this.staffAssignmentRepository.find({
+      where: { restaurantId: parseInt(restaurantId) },
+      relations: ['staff', 'restaurant']
+    });
+  }
+
+  async findStaffAssignmentById(id: string): Promise<StaffAssignment> {
+    const assignment = await this.staffAssignmentRepository.findOne({
+      where: { id: parseInt(id) },
+      relations: ['staff', 'restaurant']
+    });
+
+    if (!assignment) {
+      throw new NotFoundException(`Staff assignment with ID ${id} not found`);
+    }
+
+    return assignment;
+  }
+
+  async removeStaffAssignment(id: string): Promise<void> {
+    const assignment = await this.findStaffAssignmentById(id);
+    await this.staffAssignmentRepository.remove(assignment);
+  }
+
+  // Driver Assignment methods
+  async createDriverAssignment(createDriverAssignmentDto: CreateDriverAssignmentDto): Promise<DriverAssignment> {
+    // Check if user is already assigned to any restaurant as driver
+    const existingAssignment = await this.driverAssignmentRepository.findOne({
+      where: { driverId: parseInt(createDriverAssignmentDto.driverId) }
+    });
+
+    if (existingAssignment) {
+      throw new ConflictException('User is already assigned as driver to a restaurant');
+    }
+
+    const driverAssignment = this.driverAssignmentRepository.create({
+      ...createDriverAssignmentDto,
+      driverId: parseInt(createDriverAssignmentDto.driverId),
+      restaurantId: parseInt(createDriverAssignmentDto.restaurantId)
+    });
+    return await this.driverAssignmentRepository.save(driverAssignment);
+  }
+
+  async findDriverAssignmentsByRestaurant(restaurantId: string): Promise<DriverAssignment[]> {
+    return await this.driverAssignmentRepository.find({
+      where: { restaurantId: parseInt(restaurantId) },
+      relations: ['driver', 'restaurant']
+    });
+  }
+
+  async findDriverAssignmentById(id: string): Promise<DriverAssignment> {
+    const assignment = await this.driverAssignmentRepository.findOne({
+      where: { id: parseInt(id) },
+      relations: ['driver', 'restaurant']
+    });
+
+    if (!assignment) {
+      throw new NotFoundException(`Driver assignment with ID ${id} not found`);
+    }
+
+    return assignment;
+  }
+
+  async removeDriverAssignment(id: string): Promise<void> {
+    const assignment = await this.findDriverAssignmentById(id);
+    await this.driverAssignmentRepository.remove(assignment);
+  }
+
+  // Check if user is assigned to restaurant (staff or driver)
+  async isUserAssignedToRestaurant(userId: string, restaurantId: string): Promise<boolean> {
+    const [staffAssignment, driverAssignment] = await Promise.all([
+      this.staffAssignmentRepository.findOne({
+        where: {
+          staffId: parseInt(userId),
+          restaurantId: parseInt(restaurantId)
+        }
+      }),
+      this.driverAssignmentRepository.findOne({
+        where: {
+          driverId: parseInt(userId),
+          restaurantId: parseInt(restaurantId)
+        }
+      })
+    ]);
+
+    return !!staffAssignment || !!driverAssignment;
   }
 }

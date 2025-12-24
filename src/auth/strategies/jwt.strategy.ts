@@ -13,7 +13,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: 'super-secret-access-key-change-in-production',
+      secretOrKey: configService.get<string>('JWT_ACCESS_SECRET') || 'super-secret-access-key-change-in-production',
     });
   }
 
@@ -33,7 +33,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       sub: user.id,          // JWT standard field for user ID
       id: user.id,           // Also include id for backward compatibility
       email: user.email,
-      role: user.role?.name,
+      role: user.role.name,   // Use role name as string for consistency
       emailVerified: user.emailVerified,
       name: user.name,
     };

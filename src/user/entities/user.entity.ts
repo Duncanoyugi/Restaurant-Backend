@@ -21,6 +21,8 @@ import { Review } from '../../review/entities/review.entity';
 import { VehicleInfo } from '../../delivery/entities/vehicle-info.entity';
 import { RestaurantStaff } from '../../restaurant/entities/restaurant-staff.entity';
 import { Restaurant } from '../../restaurant/entities/restaurant.entity';
+import { StaffAssignment } from '../../restaurant/entities/staff-assignment.entity';
+import { DriverAssignment } from '../../restaurant/entities/driver-assignment.entity';
 
 // Add UserStatus enum
 export enum UserStatus {
@@ -121,6 +123,12 @@ export class User {
 
   @OneToMany(() => Restaurant, (restaurant) => restaurant.owner)
   ownedRestaurants: Restaurant[];
+
+  @OneToMany(() => StaffAssignment, assignment => assignment.staff)
+  staffAssignments: StaffAssignment[];
+
+  @OneToMany(() => DriverAssignment, assignment => assignment.driver)
+  driverAssignments: DriverAssignment[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

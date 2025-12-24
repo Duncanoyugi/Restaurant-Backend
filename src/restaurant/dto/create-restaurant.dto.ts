@@ -1,11 +1,10 @@
-import { 
-  IsString, 
-  IsNotEmpty, 
-  IsEmail, 
-  IsOptional, 
-  IsNumber, 
+import {
+  IsString,
+  IsNotEmpty,
+  IsEmail,
+  IsOptional,
+  IsNumber,
   IsBoolean,
-  IsUUID,
   Min,
   Max,
   Matches
@@ -26,8 +25,8 @@ export class CreateRestaurantDto {
 
   @IsString()
   @IsNotEmpty()
-  @Matches(/^(\+254|0)[17]\d{8}$/, { 
-    message: 'Phone number must be a valid Kenyan format' 
+  @Matches(/^\+?[1-9]\d{1,14}$/, {
+    message: 'Phone number must be a valid international format'
   })
   phone: string;
 

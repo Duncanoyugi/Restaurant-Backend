@@ -1,10 +1,10 @@
 // backend\src\reservation\reservation.service.ts
-import { 
-  Injectable, 
-  NotFoundException, 
+import {
+  Injectable,
+  NotFoundException,
   BadRequestException,
   ConflictException,
-  ForbiddenException 
+  ForbiddenException
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Like, FindOptionsWhere, MoreThanOrEqual, LessThanOrEqual, In } from 'typeorm';
@@ -32,14 +32,14 @@ export class ReservationService {
     private tableRepository: Repository<Table>,
     @InjectRepository(Restaurant)
     private restaurantRepository: Repository<Restaurant>,
-  ) {}
+  ) { }
 
   // Helper method to check reservation access
   private async checkReservationAccess(user: User, reservationId: number): Promise<Reservation> {
-      const reservation = await this.reservationRepository.findOne({
-        where: { id: reservationId },
-        relations: ['restaurant', 'restaurant.owner']
-      });
+    const reservation = await this.reservationRepository.findOne({
+      where: { id: reservationId },
+      relations: ['restaurant', 'restaurant.owner']
+    });
 
     if (!reservation) {
       throw new NotFoundException(`Reservation with ID ${reservationId} not found`);
@@ -73,9 +73,9 @@ export class ReservationService {
     }
 
     const restaurant = await this.restaurantRepository.findOne({
-          where: { id: Number(restaurantId) },
-          relations: ['owner', 'staff', 'staff.user']
-        });
+      where: { id: Number(restaurantId) },
+      relations: ['owner', 'staff', 'staff.user']
+    });
 
     if (!restaurant) {
       throw new NotFoundException(`Restaurant with ID ${restaurantId} not found`);
@@ -86,9 +86,9 @@ export class ReservationService {
     }
 
     if (user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
-          const isStaff = restaurant.staff.some(staff => staff.user.id === Number(user.id));
-          return isStaff;
-        }
+      const isStaff = restaurant.staff.some(staff => staff.user.id === Number(user.id));
+      return isStaff;
+    }
 
     return false;
   }
@@ -124,13 +124,13 @@ export class ReservationService {
   private async getUserRestaurantId(user: User): Promise<string> {
     if (user.role.name === UserRoleEnum.RESTAURANT_OWNER) {
       const restaurant = await this.restaurantRepository.findOne({
-              where: { owner: { id: Number(user.id) } }
-            });
-      
+        where: { owner: { id: Number(user.id) } }
+      });
+
       if (!restaurant) {
         throw new NotFoundException('Restaurant not found for this user');
       }
-      
+
       return String(restaurant.id);
     }
 
@@ -167,7 +167,7 @@ export class ReservationService {
 
     // Check if table number already exists in the restaurant
     const existingTable = await this.tableRepository.findOne({
-      where: { 
+      where: {
         tableNumber: createTableDto.tableNumber,
         restaurantId: createTableDto.restaurantId
       }
@@ -182,15 +182,15 @@ export class ReservationService {
   }
 
   async findAllTables(searchDto: TableSearchDto): Promise<{ data: Table[], total: number }> {
-    const { 
-      restaurantId, 
-      minCapacity, 
-      location, 
+    const {
+      restaurantId,
+      minCapacity,
+      location,
       status,
-      page = 1, 
-      limit = 20 
+      page = 1,
+      limit = 20
     } = searchDto;
-    
+
     const skip = (page - 1) * limit;
 
     const where: FindOptionsWhere<Table> = {};
@@ -216,7 +216,7 @@ export class ReservationService {
       relations: ['restaurant', 'reservations'],
       skip,
       take: limit,
-      order: { 
+      order: {
         tableNumber: 'ASC'
       }
     });
@@ -248,7 +248,7 @@ export class ReservationService {
     // Check if table number is being updated and if it already exists in the same restaurant
     if (updateTableDto.tableNumber && updateTableDto.tableNumber !== table.tableNumber) {
       const existingTable = await this.tableRepository.findOne({
-        where: { 
+        where: {
           tableNumber: updateTableDto.tableNumber,
           restaurantId: updateTableDto.restaurantId || table.restaurantId
         }
@@ -270,10 +270,10 @@ export class ReservationService {
     if (user) {
       await this.checkTableAccess(user, id);
     }
-    
+
     // Check if table has active reservations
     const activeReservations = await this.reservationRepository.count({
-      where: { 
+      where: {
         tableId: id,
         status: In([ReservationStatus.PENDING, ReservationStatus.CONFIRMED])
       }
@@ -299,7 +299,7 @@ export class ReservationService {
     // For table reservations, check table availability
     if (createReservationDto.tableId) {
       const table = await this.findTableById(Number(createReservationDto.tableId));
-      
+
       // Check table capacity
       if (createReservationDto.guestCount > table.capacity) {
         throw new BadRequestException('Guest count exceeds table capacity');
@@ -354,31 +354,31 @@ export class ReservationService {
   }
 
   async findAllReservations(searchDto: ReservationSearchDto, user?: User): Promise<{ data: Reservation[], total: number }> {
-    const { 
-      restaurantId, 
-      userId, 
+    const {
+      restaurantId,
+      userId,
       tableId,
       startDate,
       endDate,
       status,
-      page = 1, 
-      limit = 20 
+      page = 1,
+      limit = 20
     } = searchDto;
-    
+
     const skip = (page - 1) * limit;
 
     const where: FindOptionsWhere<Reservation> = {};
 
     // Apply role-based filtering
     if (user) {
-          if (user.role.name === UserRoleEnum.CUSTOMER) {
-            where.userId = Number(user.id); // Customers can only see their own reservations
-          } else if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
-            const restaurantId = await this.getUserRestaurantId(user);
-            where.restaurantId = Number(restaurantId);
-          }
-          // Admin can see all reservations (no additional filtering)
-        }
+      if (user.role.name === UserRoleEnum.CUSTOMER) {
+        where.userId = Number(user.id); // Customers can only see their own reservations
+      } else if (user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF) {
+        const restaurantId = await this.getUserRestaurantId(user);
+        where.restaurantId = Number(restaurantId);
+      }
+      // Admin can see all reservations (no additional filtering)
+    }
 
     // Apply search filters (overriding role-based filters for admin)
     if (restaurantId && (user?.role.name === UserRoleEnum.ADMIN || await this.checkRestaurantAccess(user!, restaurantId))) {
@@ -386,12 +386,12 @@ export class ReservationService {
     }
 
     if (userId && (user?.role.name === UserRoleEnum.ADMIN || Number(user?.id) === Number(userId))) {
-          where.userId = Number(userId);
-        }
+      where.userId = Number(userId);
+    }
 
     if (tableId) {
-          where.tableId = Number(tableId);
-        }
+      where.tableId = Number(tableId);
+    }
 
     if (startDate && endDate) {
       where.reservationDate = Between(new Date(startDate), new Date(endDate));
@@ -406,7 +406,7 @@ export class ReservationService {
       relations: ['restaurant', 'user', 'table', 'payment'],
       skip,
       take: limit,
-      order: { 
+      order: {
         reservationDate: 'DESC',
         reservationTime: 'DESC'
       }
@@ -456,17 +456,17 @@ export class ReservationService {
 
     // Check if user can update this reservation
     if (user) {
-          if (user.role.name === UserRoleEnum.CUSTOMER && reservation.userId !== Number(user.id)) {
-            throw new ForbiddenException('You can only update your own reservations');
-          }
-    
-          if ((user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
-            const hasAccess = await this.checkRestaurantAccess(user, String(reservation.restaurantId));
-            if (!hasAccess) {
-              throw new ForbiddenException('You can only update reservations from your restaurant');
-            }
-          }
+      if (user.role.name === UserRoleEnum.CUSTOMER && reservation.userId !== Number(user.id)) {
+        throw new ForbiddenException('You can only update your own reservations');
+      }
+
+      if ((user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
+        const hasAccess = await this.checkRestaurantAccess(user, String(reservation.restaurantId));
+        if (!hasAccess) {
+          throw new ForbiddenException('You can only update reservations from your restaurant');
         }
+      }
+    }
 
     // Prevent updates for completed or cancelled reservations
     if ([ReservationStatus.COMPLETED, ReservationStatus.CANCELLED, ReservationStatus.NO_SHOW].includes(reservation.status)) {
@@ -474,9 +474,9 @@ export class ReservationService {
     }
 
     // If table or time is being updated, check availability
-    if ((updateReservationDto.tableId || updateReservationDto.reservationDate || updateReservationDto.reservationTime) && 
-        reservation.status !== ReservationStatus.COMPLETED) {
-      
+    if ((updateReservationDto.tableId || updateReservationDto.reservationDate || updateReservationDto.reservationTime) &&
+      reservation.status !== ReservationStatus.COMPLETED) {
+
       const tableId = updateReservationDto.tableId || reservation.tableId;
       const reservationDate = updateReservationDto.reservationDate ? new Date(updateReservationDto.reservationDate) : reservation.reservationDate;
       const reservationTime = updateReservationDto.reservationTime || reservation.reservationTime;
@@ -533,17 +533,17 @@ export class ReservationService {
 
     // Check if user can cancel this reservation
     if (user) {
-          if (user.role.name === UserRoleEnum.CUSTOMER && reservation.userId !== Number(user.id)) {
-            throw new ForbiddenException('You can only cancel your own reservations');
-          }
-    
-          if ((user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
-            const hasAccess = await this.checkRestaurantAccess(user, String(reservation.restaurantId));
-            if (!hasAccess) {
-              throw new ForbiddenException('You can only cancel reservations from your restaurant');
-            }
-          }
+      if (user.role.name === UserRoleEnum.CUSTOMER && reservation.userId !== Number(user.id)) {
+        throw new ForbiddenException('You can only cancel your own reservations');
+      }
+
+      if ((user.role.name === UserRoleEnum.RESTAURANT_OWNER || user.role.name === UserRoleEnum.RESTAURANT_STAFF)) {
+        const hasAccess = await this.checkRestaurantAccess(user, String(reservation.restaurantId));
+        if (!hasAccess) {
+          throw new ForbiddenException('You can only cancel reservations from your restaurant');
         }
+      }
+    }
 
     // Only allow cancellation for pending or confirmed reservations
     if (![ReservationStatus.PENDING, ReservationStatus.CONFIRMED].includes(reservation.status)) {
@@ -562,10 +562,10 @@ export class ReservationService {
   }
 
   // Availability endpoints - Public access
-  async checkAvailability(availabilityDto: AvailabilityCheckDto): Promise<{ 
-    available: boolean, 
+  async checkAvailability(availabilityDto: AvailabilityCheckDto): Promise<{
+    available: boolean,
     availableTables?: Table[],
-    message?: string 
+    message?: string
   }> {
     const { restaurantId, reservationDate, reservationTime, guestCount, duration } = availabilityDto;
 
@@ -578,15 +578,15 @@ export class ReservationService {
     });
 
     if (availableTables.length === 0) {
-      return { 
-        available: false, 
-        message: 'No available tables for the selected time and guest count' 
+      return {
+        available: false,
+        message: 'No available tables for the selected time and guest count'
       };
     }
 
-    return { 
-      available: true, 
-      availableTables 
+    return {
+      available: true,
+      availableTables
     };
   }
 
@@ -595,7 +595,7 @@ export class ReservationService {
 
     // Get all tables for the restaurant that can accommodate the guest count
     const tables = await this.tableRepository.find({
-      where: { 
+      where: {
         restaurantId,
         capacity: MoreThanOrEqual(guestCount),
         status: TableStatus.AVAILABLE
@@ -633,17 +633,17 @@ export class ReservationService {
   }> {
     // Check restaurant access
     if (user) {
-          const hasAccess = await this.checkRestaurantAccess(user, String(restaurantId));
-          if (!hasAccess && user.role.name !== UserRoleEnum.ADMIN) {
-            throw new ForbiddenException('You can only access statistics for your restaurant');
-          }
-        }
+      const hasAccess = await this.checkRestaurantAccess(user, String(restaurantId));
+      if (!hasAccess && user.role.name !== UserRoleEnum.ADMIN) {
+        throw new ForbiddenException('You can only access statistics for your restaurant');
+      }
+    }
 
     const reservations = await this.reservationRepository.find({
       where: {
-            restaurantId: Number(restaurantId),
-            reservationDate: Between(new Date(startDate), new Date(endDate))
-          }
+        restaurantId: Number(restaurantId),
+        reservationDate: Between(new Date(startDate), new Date(endDate))
+      }
     });
 
     const stats = {
@@ -657,7 +657,7 @@ export class ReservationService {
 
     // Calculate occupancy rate (completed / (completed + cancelled + noShow))
     const relevantReservations = stats.completed + stats.cancelled + stats.noShow;
-    stats.occupancyRate = relevantReservations > 0 ? 
+    stats.occupancyRate = relevantReservations > 0 ?
       (stats.completed / relevantReservations) * 100 : 0;
 
     return stats;
@@ -666,11 +666,11 @@ export class ReservationService {
   async getUpcomingReservations(restaurantId: number, hours: number = 24, user?: User): Promise<Reservation[]> {
     // Check restaurant access
     if (user) {
-          const hasAccess = await this.checkRestaurantAccess(user, String(restaurantId));
-          if (!hasAccess && user.role.name !== UserRoleEnum.ADMIN) {
-            throw new ForbiddenException('You can only access upcoming reservations for your restaurant');
-          }
-        }
+      const hasAccess = await this.checkRestaurantAccess(user, String(restaurantId));
+      if (!hasAccess && user.role.name !== UserRoleEnum.ADMIN) {
+        throw new ForbiddenException('You can only access upcoming reservations for your restaurant');
+      }
+    }
 
     const startDate = new Date();
     const endDate = new Date();
@@ -683,7 +683,7 @@ export class ReservationService {
         reservationDate: Between(startDate, endDate)
       },
       relations: ['user', 'table'],
-      order: { 
+      order: {
         reservationDate: 'ASC',
         reservationTime: 'ASC'
       }
@@ -693,11 +693,11 @@ export class ReservationService {
   async getDailyReservations(restaurantId: number, date: string, user?: User): Promise<Reservation[]> {
     // Check restaurant access
     if (user) {
-          const hasAccess = await this.checkRestaurantAccess(user, String(restaurantId));
-          if (!hasAccess && user.role.name !== UserRoleEnum.ADMIN) {
-            throw new ForbiddenException('You can only access daily reservations for your restaurant');
-          }
-        }
+      const hasAccess = await this.checkRestaurantAccess(user, String(restaurantId));
+      if (!hasAccess && user.role.name !== UserRoleEnum.ADMIN) {
+        throw new ForbiddenException('You can only access daily reservations for your restaurant');
+      }
+    }
 
     const targetDate = new Date(date);
 
@@ -708,7 +708,7 @@ export class ReservationService {
         status: In([ReservationStatus.PENDING, ReservationStatus.CONFIRMED])
       },
       relations: ['user', 'table'],
-      order: { 
+      order: {
         reservationTime: 'ASC'
       }
     });
@@ -717,7 +717,7 @@ export class ReservationService {
   // New methods for user-specific access
   async getMyRestaurantReservations(user: User): Promise<{ data: Reservation[], total: number }> {
     const restaurantId = await this.getUserRestaurantId(user);
-    
+
     const searchDto: ReservationSearchDto = {
       restaurantId,
       page: 1,
@@ -729,9 +729,9 @@ export class ReservationService {
 
   async getMyRestaurantTables(user: User): Promise<{ data: Table[], total: number }> {
     const restaurantId = await this.getUserRestaurantId(user);
-    
+
     const searchDto: TableSearchDto = {
-      restaurantId,
+      restaurantId: Number(restaurantId),
       page: 1,
       limit: 50
     };
@@ -741,17 +741,17 @@ export class ReservationService {
 
   // Existing helper methods (keep the same logic)
   private async isTableAvailable(
-      tableId: number,
-      reservationDate: string,
-      reservationTime: string,
-      excludeReservationId?: number,
-      duration: number = 120
-    ): Promise<boolean> {
+    tableId: number,
+    reservationDate: string,
+    reservationTime: string,
+    excludeReservationId?: number,
+    duration: number = 120
+  ): Promise<boolean> {
     const conflictingReservations = await this.reservationRepository
       .createQueryBuilder('reservation')
       .where('reservation.tableId = :tableId', { tableId })
-      .andWhere('reservation.status IN (:...statuses)', { 
-        statuses: [ReservationStatus.PENDING, ReservationStatus.CONFIRMED] 
+      .andWhere('reservation.status IN (:...statuses)', {
+        statuses: [ReservationStatus.PENDING, ReservationStatus.CONFIRMED]
       })
       .andWhere('reservation.reservationDate = :reservationDate', { reservationDate })
       .andWhere('(reservation.reservationTime BETWEEN :startTime AND :endTime OR :reservationTime BETWEEN reservation.reservationTime AND DATEADD(MINUTE, :duration, reservation.reservationTime))')
@@ -772,19 +772,19 @@ export class ReservationService {
   }
 
   private async isRestaurantAvailable(
-      restaurantId: number,
-      reservationDate: string,
-      reservationTime: string,
-      guestCount: number
-    ): Promise<boolean> {
+    restaurantId: number,
+    reservationDate: string,
+    reservationTime: string,
+    guestCount: number
+  ): Promise<boolean> {
     // Get total capacity of available tables
     const availableTables = await this.findAvailableTables({
-          restaurantId: restaurantId,
-          reservationDate,
-          reservationTime,
-          guestCount: 1, // Minimum capacity
-          duration: 120
-        });
+      restaurantId: restaurantId,
+      reservationDate,
+      reservationTime,
+      guestCount: 1, // Minimum capacity
+      duration: 120
+    });
 
     const totalCapacity = availableTables.reduce((sum, table) => sum + table.capacity, 0);
 

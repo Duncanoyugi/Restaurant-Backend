@@ -3,9 +3,10 @@ import { Type } from 'class-transformer';
 import { TableStatus } from '../entities/table.entity';
 
 export class TableSearchDto {
-  @IsUUID()
+  @IsNumber()
+  @Type(() => Number)
   @IsNotEmpty()
-  restaurantId: string;
+  restaurantId: number;
 
   @IsNumber()
   @Type(() => Number)

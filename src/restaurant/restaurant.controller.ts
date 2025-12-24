@@ -32,16 +32,19 @@ import { UpdateRestaurantStaffDto } from './dto/update-restaurant-staff.dto';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
 import { RestaurantSearchDto } from './dto/restaurant-search.dto';
+import { CreateStaffAssignmentDto } from './dto/create-staff-assignment.dto';
+import { CreateDriverAssignmentDto } from './dto/create-driver-assignment.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('restaurants')
 @ApiBearerAuth()
 @Controller('restaurants')
 @UseInterceptors(ClassSerializerInterceptor)
-@UseGuards(RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class RestaurantController {
   constructor(private readonly restaurantService: RestaurantService) { }
 
@@ -108,8 +111,8 @@ export class RestaurantController {
   @ApiOperation({ summary: 'Get restaurant by ID' })
   @ApiResponse({ status: 200, description: 'Restaurant retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Restaurant not found' })
-  @ApiParam({ name: 'id', description: 'Restaurant ID', type: String })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiParam({ name: 'id', description: 'Restaurant ID', type: Number })
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.restaurantService.findOne(id);
   }
 
@@ -265,5 +268,67 @@ export class RestaurantController {
   @ApiParam({ name: 'id', description: 'Shift ID', type: String })
   removeShift(@Param('id', ParseUUIDPipe) id: string) {
     return this.restaurantService.removeShift(id);
+  }
+
+  // Staff Assignment endpoints
+  @Post('staff-assignments')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Create a staff assignment' })
+  @ApiResponse({ status: 201, description: 'Staff assignment created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiBody({ type: CreateStaffAssignmentDto })
+  createStaffAssignment(@Body() createStaffAssignmentDto: CreateStaffAssignmentDto) {
+    return this.restaurantService.createStaffAssignment(createStaffAssignmentDto);
+  }
+
+  @Get('staff-assignments/restaurant/:restaurantId')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get all staff assignments for restaurant' })
+  @ApiResponse({ status: 200, description: 'Staff assignments retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
+  findStaffAssignmentsByRestaurant(@Param('restaurantId', ParseUUIDPipe) restaurantId: string) {
+    return this.restaurantService.findStaffAssignmentsByRestaurant(restaurantId);
+  }
+
+  @Delete('staff-assignments/:id')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Delete staff assignment by ID' })
+  @ApiResponse({ status: 200, description: 'Staff assignment deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Staff assignment not found' })
+  @ApiParam({ name: 'id', description: 'Staff Assignment ID', type: String })
+  removeStaffAssignment(@Param('id', ParseUUIDPipe) id: string) {
+    return this.restaurantService.removeStaffAssignment(id);
+  }
+
+  // Driver Assignment endpoints
+  @Post('driver-assignments')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Create a driver assignment' })
+  @ApiResponse({ status: 201, description: 'Driver assignment created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiBody({ type: CreateDriverAssignmentDto })
+  createDriverAssignment(@Body() createDriverAssignmentDto: CreateDriverAssignmentDto) {
+    return this.restaurantService.createDriverAssignment(createDriverAssignmentDto);
+  }
+
+  @Get('driver-assignments/restaurant/:restaurantId')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.DRIVER)
+  @ApiOperation({ summary: 'Get all driver assignments for restaurant' })
+  @ApiResponse({ status: 200, description: 'Driver assignments retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
+  findDriverAssignmentsByRestaurant(@Param('restaurantId', ParseUUIDPipe) restaurantId: string) {
+    return this.restaurantService.findDriverAssignmentsByRestaurant(restaurantId);
+  }
+
+  @Delete('driver-assignments/:id')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER)
+  @ApiOperation({ summary: 'Delete driver assignment by ID' })
+  @ApiResponse({ status: 200, description: 'Driver assignment deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Driver assignment not found' })
+  @ApiParam({ name: 'id', description: 'Driver Assignment ID', type: String })
+  removeDriverAssignment(@Param('id', ParseUUIDPipe) id: string) {
+    return this.restaurantService.removeDriverAssignment(id);
   }
 }

@@ -1,27 +1,16 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  DeleteDateColumn,
-  ManyToOne,
-  OneToMany,
-  JoinColumn,
-  Index,
-} from 'typeorm';
-import { City } from '../../location/entities/city.entity';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany, ManyToOne, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { MenuItem } from '../../menu/entities/menu.entity';
-import { Table } from '../../reservation/entities/table.entity';
 import { Room } from '../../room/entities/room.entity';
-import { Order } from '../../order/entities/order.entity';
+import { Table } from '../../reservation/entities/table.entity';
 import { RestaurantStaff } from './restaurant-staff.entity';
+import { Shift } from './shift.entity';
+import { StaffAssignment } from './staff-assignment.entity';
+import { DriverAssignment } from './driver-assignment.entity';
+import { City } from '../../location/entities/city.entity';
+import { Order } from '../../order/entities/order.entity';
 
 @Entity('restaurant')
-@Index(['email'])
-@Index(['phone'])
-@Index(['ownerId'])
 export class Restaurant {
   @PrimaryGeneratedColumn()
   id: number;
@@ -62,7 +51,6 @@ export class Restaurant {
   @Column({ type: 'time', nullable: true, name: 'closing_time' })
   closingTime: string;
 
-  // FIX: Change boolean to bit for MSSQL
   @Column({ type: 'bit', default: 1 })
   active: boolean;
 
@@ -75,29 +63,6 @@ export class Restaurant {
   @Column({ name: 'city_id' })
   cityId: number;
 
-  @ManyToOne(() => User, (user) => user.ownedRestaurants)
-  @JoinColumn({ name: 'owner_id' })
-  owner: User;
-
-  @ManyToOne(() => City, (city) => city.restaurants)
-  @JoinColumn({ name: 'city_id' })
-  city: City;
-
-  @OneToMany(() => MenuItem, (item) => item.restaurant)
-  menuItems: MenuItem[];
-
-  @OneToMany(() => Table, (table) => table.restaurant)
-  tables: Table[];
-
-  @OneToMany(() => Room, (room) => room.restaurant)
-  rooms: Room[];
-
-  @OneToMany(() => Order, (order) => order.restaurant)
-  orders: Order[];
-
-  @OneToMany(() => RestaurantStaff, (staff) => staff.restaurant)
-  staff: RestaurantStaff[];
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -106,4 +71,40 @@ export class Restaurant {
 
   @DeleteDateColumn({ name: 'deleted_at' })
   deletedAt: Date;
+
+  // RELATIONSHIPS
+  @ManyToOne(() => User, user => user.ownedRestaurants)
+  @JoinColumn({ name: 'owner_id' })
+  owner: User;
+
+  @OneToMany(() => MenuItem, menu => menu.restaurant)
+  menus: MenuItem[];
+
+  @OneToMany(() => Room, room => room.restaurant)
+  rooms: Room[];
+
+  @OneToMany(() => Table, table => table.restaurant)
+  tables: Table[];
+
+  @OneToMany(() => RestaurantStaff, staff => staff.restaurant)
+  staff: RestaurantStaff[];
+
+  @ManyToOne(() => City, (city) => city.restaurants)
+  @JoinColumn({ name: 'city_id' })
+  city: City;
+
+  @OneToMany(() => MenuItem, (menuItem) => menuItem.restaurant)
+  menuItems: MenuItem[];
+
+  @OneToMany(() => Order, (order) => order.restaurant)
+  orders: Order[];
+
+  @OneToMany(() => Shift, shift => shift.staff)
+  shifts: Shift[];
+
+  @OneToMany(() => StaffAssignment, assignment => assignment.restaurant)
+  staffAssignments: StaffAssignment[];
+
+  @OneToMany(() => DriverAssignment, assignment => assignment.restaurant)
+  driverAssignments: DriverAssignment[];
 }

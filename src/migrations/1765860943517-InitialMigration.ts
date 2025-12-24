@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class InitialMigration1765456731894 implements MigrationInterface {
-    name = 'InitialMigration1765456731894'
+export class InitialMigration1765860943517 implements MigrationInterface {
+    name = 'InitialMigration1765860943517'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "email_log" ("id" uniqueidentifier NOT NULL CONSTRAINT "DF_edfd3f7225051fc07bdd63a22dc" DEFAULT NEWSEQUENTIALID(), "recipient_email" varchar(100) NOT NULL, "recipient_name" varchar(100), "subject" varchar(200) NOT NULL, "body" text NOT NULL, "template" varchar(50) NOT NULL, "status" varchar(50) NOT NULL, "error_message" text, "metadata" ntext, "sent_at" datetime, "created_at" datetime2 NOT NULL CONSTRAINT "DF_165d4d4bf970ba4e813dc6266c9" DEFAULT getdate(), CONSTRAINT "PK_edfd3f7225051fc07bdd63a22dc" PRIMARY KEY ("id"))`);
@@ -41,14 +41,14 @@ export class InitialMigration1765456731894 implements MigrationInterface {
         await queryRunner.query(`CREATE INDEX "IDX_b41697313e0aad1c91fa14a9b9" ON "shift" ("staff_id", "shift_date") `);
         await queryRunner.query(`CREATE TABLE "restaurant_staff" ("id" int NOT NULL IDENTITY(1,1), "user_id" int NOT NULL, "restaurant_id" int NOT NULL, "position" varchar(100) NOT NULL, "salary" decimal(10,2), "hire_date" date NOT NULL, "active" bit NOT NULL CONSTRAINT "DF_92a9f3d90b1e2dc666756ace951" DEFAULT 1, "emergency_contact" varchar(100), "emergency_phone" varchar(20), "created_at" datetime2 NOT NULL CONSTRAINT "DF_8d4e8fdccc42919b5138d47d398" DEFAULT getdate(), "updated_at" datetime2 NOT NULL CONSTRAINT "DF_52534bffe7f48f74c13ba7414c7" DEFAULT getdate(), CONSTRAINT "UQ_973c53bdc06495c9daf779e23f3" UNIQUE ("user_id"), CONSTRAINT "PK_6b47b2ff71d81e5d3c18117b228" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE UNIQUE INDEX "REL_973c53bdc06495c9daf779e23f" ON "restaurant_staff" ("user_id") WHERE "user_id" IS NOT NULL`);
+        await queryRunner.query(`CREATE TABLE "staff_assignments" ("id" int NOT NULL IDENTITY(1,1), "restaurant_id" int NOT NULL, "staff_id" int NOT NULL, "role" nvarchar(255) NOT NULL, "status" nvarchar(255) NOT NULL CONSTRAINT "DF_0d762d24cb49941324973e92e28" DEFAULT 'active', "assignedAt" datetime2 NOT NULL CONSTRAINT "DF_41df2a443bc7ae048a9435ac60a" DEFAULT getdate(), CONSTRAINT "PK_ab013446523a48ceb9b14144530" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "driver_assignments" ("id" int NOT NULL IDENTITY(1,1), "restaurant_id" int NOT NULL, "driver_id" int NOT NULL, "vehicleType" nvarchar(255), "licensePlate" nvarchar(255), "status" nvarchar(255) NOT NULL CONSTRAINT "DF_47028f395a590c840485deda212" DEFAULT 'active', "workingHours" ntext, "assignedAt" datetime2 NOT NULL CONSTRAINT "DF_bcebf6c06f27aada09c90379352" DEFAULT getdate(), CONSTRAINT "PK_b72677caff7b7e9acad3d55b3ec" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "users" ("id" int NOT NULL IDENTITY(1,1), "name" varchar(100) NOT NULL, "email" varchar(100) NOT NULL, "phone" varchar(20) NOT NULL, "password" varchar(255) NOT NULL, "email_verified" bit NOT NULL CONSTRAINT "DF_cf96ca0dc9c97fdc2ae06831d87" DEFAULT 0, "profile_image" varchar(255), "active" bit NOT NULL CONSTRAINT "DF_0890d8ebe90990c78fe4804231b" DEFAULT 1, "status" varchar(30) NOT NULL CONSTRAINT "DF_3676155292d72c67cd4e090514f" DEFAULT 'pending_verification', "reset_token" varchar(100), "verification_token" varchar(100), "reset_token_expiry" datetime, "role_id" int NOT NULL, "is_online" bit NOT NULL CONSTRAINT "DF_f04cb5149b3f89dab517cdcd759" DEFAULT 0, "is_available" bit NOT NULL CONSTRAINT "DF_41e24718b3c2ea982341314c329" DEFAULT 0, "current_latitude" decimal(10,7), "current_longitude" decimal(10,7), "average_rating" decimal(3,2) NOT NULL CONSTRAINT "DF_97b88a24c41eb6f0c6f52200739" DEFAULT 0, "total_deliveries" int NOT NULL CONSTRAINT "DF_1234ef86c586130205a168017a4" DEFAULT 0, "created_at" datetime2 NOT NULL CONSTRAINT "DF_c9b5b525a96ddc2c5647d7f7fa5" DEFAULT getdate(), "updated_at" datetime2 NOT NULL CONSTRAINT "DF_6d596d799f9cb9dac6f7bf7c23c" DEFAULT getdate(), "deleted_at" datetime2, CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"), CONSTRAINT "UQ_a000cca60bcf04454e727699490" UNIQUE ("phone"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_a2cecd1a3531c0b041e29ba46e" ON "users" ("role_id") `);
         await queryRunner.query(`CREATE INDEX "IDX_a000cca60bcf04454e72769949" ON "users" ("phone") `);
         await queryRunner.query(`CREATE INDEX "IDX_97672ac88f789774dd47f7c8be" ON "users" ("email") `);
         await queryRunner.query(`CREATE TABLE "restaurant" ("id" int NOT NULL IDENTITY(1,1), "name" varchar(200) NOT NULL, "description" text, "email" varchar(100) NOT NULL, "phone" varchar(20) NOT NULL, "street_address" varchar(255) NOT NULL, "zip_code" varchar(20) NOT NULL, "latitude" decimal(10,7), "longitude" decimal(10,7), "logo_url" varchar(255), "cover_image_url" varchar(255), "opening_time" time, "closing_time" time, "active" bit NOT NULL CONSTRAINT "DF_b2f8b70a5283e6db6f5c9797a4f" DEFAULT 1, "average_rating" decimal(3,2) NOT NULL CONSTRAINT "DF_2dc310dfa45a44e2c46536c9e6e" DEFAULT 0, "owner_id" int NOT NULL, "city_id" int NOT NULL, "created_at" datetime2 NOT NULL CONSTRAINT "DF_bec6b630b0994e8a732afc33f61" DEFAULT getdate(), "updated_at" datetime2 NOT NULL CONSTRAINT "DF_e54286d85c074ba95d65ee6d17b" DEFAULT getdate(), "deleted_at" datetime2, CONSTRAINT "UQ_d055cac5f0f06d57b0a3b1fe574" UNIQUE ("email"), CONSTRAINT "PK_649e250d8b8165cb406d99aa30f" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_fe7a22ecf454b7168b5a37fbdc" ON "restaurant" ("owner_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_859bd1106b8216d8b30cbbe1a1" ON "restaurant" ("phone") `);
-        await queryRunner.query(`CREATE INDEX "IDX_d055cac5f0f06d57b0a3b1fe57" ON "restaurant" ("email") `);
+        await queryRunner.query(`CREATE UNIQUE INDEX "REL_fe7a22ecf454b7168b5a37fbdc" ON "restaurant" ("owner_id") WHERE "owner_id" IS NOT NULL`);
         await queryRunner.query(`CREATE TABLE "city" ("id" int NOT NULL IDENTITY(1,1), "name" varchar(100) NOT NULL, "state_id" int NOT NULL, "created_at" datetime2 NOT NULL CONSTRAINT "DF_60ff27bbe4002d0da0da7801087" DEFAULT getdate(), CONSTRAINT "PK_b222f51ce26f7e5ca86944a6739" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "state" ("id" int NOT NULL IDENTITY(1,1), "name" varchar(100) NOT NULL, "code" varchar(10) NOT NULL, "country_id" int NOT NULL, "created_at" datetime2 NOT NULL CONSTRAINT "DF_08e95aa8f7270203931afa36e8f" DEFAULT getdate(), CONSTRAINT "PK_549ffd046ebab1336c3a8030a12" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "stock_transaction" ("id" int NOT NULL IDENTITY(1,1), "inventory_item_id" int NOT NULL, "quantity_change" int NOT NULL, "transaction_type" varchar(20) NOT NULL, "reference_id" varchar(100), "reason" varchar(255), "performed_by" int, "created_at" datetime2 NOT NULL CONSTRAINT "DF_13cd3842675392f6a82a3dff577" DEFAULT getdate(), CONSTRAINT "PK_8a81a89b9130bda3a5277cce53a" PRIMARY KEY ("id"))`);
@@ -111,6 +111,10 @@ export class InitialMigration1765456731894 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "shift" ADD CONSTRAINT "FK_d030acf2e7099f931d515237ecb" FOREIGN KEY ("staff_id") REFERENCES "restaurant_staff"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "restaurant_staff" ADD CONSTRAINT "FK_973c53bdc06495c9daf779e23f3" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "restaurant_staff" ADD CONSTRAINT "FK_14050e881d650b217075f1110c4" FOREIGN KEY ("restaurant_id") REFERENCES "restaurant"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "staff_assignments" ADD CONSTRAINT "FK_6ac397c566a0f56bd6fe2b54262" FOREIGN KEY ("restaurant_id") REFERENCES "restaurant"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "staff_assignments" ADD CONSTRAINT "FK_6ff0f6a29afcb34aa82e9963298" FOREIGN KEY ("staff_id") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "driver_assignments" ADD CONSTRAINT "FK_444146448fe885ff036ecb47e46" FOREIGN KEY ("restaurant_id") REFERENCES "restaurant"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "driver_assignments" ADD CONSTRAINT "FK_3b70749e81638d9f7e532c8b9a2" FOREIGN KEY ("driver_id") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "users" ADD CONSTRAINT "FK_a2cecd1a3531c0b041e29ba46e1" FOREIGN KEY ("role_id") REFERENCES "user_roles"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "restaurant" ADD CONSTRAINT "FK_fe7a22ecf454b7168b5a37fbdce" FOREIGN KEY ("owner_id") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "restaurant" ADD CONSTRAINT "FK_6f2fe84da283ef2126d64bed513" FOREIGN KEY ("city_id") REFERENCES "city"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
@@ -138,6 +142,10 @@ export class InitialMigration1765456731894 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "restaurant" DROP CONSTRAINT "FK_6f2fe84da283ef2126d64bed513"`);
         await queryRunner.query(`ALTER TABLE "restaurant" DROP CONSTRAINT "FK_fe7a22ecf454b7168b5a37fbdce"`);
         await queryRunner.query(`ALTER TABLE "users" DROP CONSTRAINT "FK_a2cecd1a3531c0b041e29ba46e1"`);
+        await queryRunner.query(`ALTER TABLE "driver_assignments" DROP CONSTRAINT "FK_3b70749e81638d9f7e532c8b9a2"`);
+        await queryRunner.query(`ALTER TABLE "driver_assignments" DROP CONSTRAINT "FK_444146448fe885ff036ecb47e46"`);
+        await queryRunner.query(`ALTER TABLE "staff_assignments" DROP CONSTRAINT "FK_6ff0f6a29afcb34aa82e9963298"`);
+        await queryRunner.query(`ALTER TABLE "staff_assignments" DROP CONSTRAINT "FK_6ac397c566a0f56bd6fe2b54262"`);
         await queryRunner.query(`ALTER TABLE "restaurant_staff" DROP CONSTRAINT "FK_14050e881d650b217075f1110c4"`);
         await queryRunner.query(`ALTER TABLE "restaurant_staff" DROP CONSTRAINT "FK_973c53bdc06495c9daf779e23f3"`);
         await queryRunner.query(`ALTER TABLE "shift" DROP CONSTRAINT "FK_d030acf2e7099f931d515237ecb"`);
@@ -200,14 +208,14 @@ export class InitialMigration1765456731894 implements MigrationInterface {
         await queryRunner.query(`DROP TABLE "stock_transaction"`);
         await queryRunner.query(`DROP TABLE "state"`);
         await queryRunner.query(`DROP TABLE "city"`);
-        await queryRunner.query(`DROP INDEX "IDX_d055cac5f0f06d57b0a3b1fe57" ON "restaurant"`);
-        await queryRunner.query(`DROP INDEX "IDX_859bd1106b8216d8b30cbbe1a1" ON "restaurant"`);
-        await queryRunner.query(`DROP INDEX "IDX_fe7a22ecf454b7168b5a37fbdc" ON "restaurant"`);
+        await queryRunner.query(`DROP INDEX "REL_fe7a22ecf454b7168b5a37fbdc" ON "restaurant"`);
         await queryRunner.query(`DROP TABLE "restaurant"`);
         await queryRunner.query(`DROP INDEX "IDX_97672ac88f789774dd47f7c8be" ON "users"`);
         await queryRunner.query(`DROP INDEX "IDX_a000cca60bcf04454e72769949" ON "users"`);
         await queryRunner.query(`DROP INDEX "IDX_a2cecd1a3531c0b041e29ba46e" ON "users"`);
         await queryRunner.query(`DROP TABLE "users"`);
+        await queryRunner.query(`DROP TABLE "driver_assignments"`);
+        await queryRunner.query(`DROP TABLE "staff_assignments"`);
         await queryRunner.query(`DROP INDEX "REL_973c53bdc06495c9daf779e23f" ON "restaurant_staff"`);
         await queryRunner.query(`DROP TABLE "restaurant_staff"`);
         await queryRunner.query(`DROP INDEX "IDX_b41697313e0aad1c91fa14a9b9" ON "shift"`);
