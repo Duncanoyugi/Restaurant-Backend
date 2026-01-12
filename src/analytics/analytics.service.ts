@@ -138,10 +138,10 @@ export class AnalyticsService {
 
   async getRevenueAnalytics(query: AnalyticsQueryDto) {
     const dateRange = this.getDateRange(query);
-    
+
     const revenueData = await this.businessMetricsRepository
       .createQueryBuilder('metrics')
-      .select('DATE(metrics.date)', 'date')
+      .select('CAST(metrics.date AS DATE)', 'date')
       .addSelect('SUM(metrics.totalRevenue)', 'totalRevenue')
       .addSelect('SUM(metrics.onlineRevenue)', 'onlineRevenue')
       .addSelect('SUM(metrics.dineInRevenue)', 'dineInRevenue')
@@ -150,7 +150,7 @@ export class AnalyticsService {
       .andWhere(query.restaurantId ? 'metrics.restaurantId = :restaurantId' : '1=1', {
         restaurantId: query.restaurantId
       })
-      .groupBy('DATE(metrics.date)')
+      .groupBy('CAST(metrics.date AS DATE)')
       .orderBy('date', 'ASC')
       .getRawMany();
 
@@ -170,10 +170,10 @@ export class AnalyticsService {
 
   async getOrderAnalytics(query: AnalyticsQueryDto) {
     const dateRange = this.getDateRange(query);
-    
+
     const orderData = await this.businessMetricsRepository
       .createQueryBuilder('metrics')
-      .select('DATE(metrics.date)', 'date')
+      .select('CAST(metrics.date AS DATE)', 'date')
       .addSelect('SUM(metrics.totalOrders)', 'totalOrders')
       .addSelect('SUM(metrics.onlineOrders)', 'onlineOrders')
       .addSelect('SUM(metrics.dineInOrders)', 'dineInOrders')
@@ -183,7 +183,7 @@ export class AnalyticsService {
       .andWhere(query.restaurantId ? 'metrics.restaurantId = :restaurantId' : '1=1', {
         restaurantId: query.restaurantId
       })
-      .groupBy('DATE(metrics.date)')
+      .groupBy('CAST(metrics.date AS DATE)')
       .orderBy('date', 'ASC')
       .getRawMany();
 
@@ -205,10 +205,10 @@ export class AnalyticsService {
 
   async getCustomerAnalytics(query: AnalyticsQueryDto) {
     const dateRange = this.getDateRange(query);
-    
+
     const customerData = await this.businessMetricsRepository
       .createQueryBuilder('metrics')
-      .select('DATE(metrics.date)', 'date')
+      .select('CAST(metrics.date AS DATE)', 'date')
       .addSelect('SUM(metrics.newCustomers)', 'newCustomers')
       .addSelect('SUM(metrics.returningCustomers)', 'returningCustomers')
       .addSelect('AVG(metrics.customerSatisfactionScore)', 'satisfactionScore')
@@ -216,7 +216,7 @@ export class AnalyticsService {
       .andWhere(query.restaurantId ? 'metrics.restaurantId = :restaurantId' : '1=1', {
         restaurantId: query.restaurantId
       })
-      .groupBy('DATE(metrics.date)')
+      .groupBy('CAST(metrics.date AS DATE)')
       .orderBy('date', 'ASC')
       .getRawMany();
 

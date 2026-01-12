@@ -25,7 +25,7 @@ export class CreateRestaurantDto {
 
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\+?[1-9]\d{1,14}$/, {
+  @Matches(/^[\+]?[1-9][\d]{0,15}$/, {
     message: 'Phone number must be a valid international format'
   })
   phone: string;
@@ -77,4 +77,8 @@ export class CreateRestaurantDto {
   @IsNumber()
   @IsNotEmpty()
   cityId: number;
+
+  @IsString()
+  @IsOptional()
+  cuisineType?: string;
 }

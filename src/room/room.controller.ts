@@ -31,6 +31,7 @@ import { RoomSearchDto } from './dto/room-search.dto';
 import { BookingSearchDto } from './dto/booking-search.dto';
 import { BookingStatusDto } from './dto/booking-status.dto';
 import { AvailabilityCheckDto } from './dto/availability-check.dto';
+import { RoomBookingStatus } from './entities/room-booking.entity';
 import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -123,8 +124,34 @@ export class RoomController {
   @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER)
   @ApiOperation({ summary: 'Get all room bookings with filtering' })
   @ApiResponse({ status: 200, description: 'Bookings retrieved successfully' })
-  @ApiQuery({ type: BookingSearchDto })
-  findAllBookings(@Query() searchDto: BookingSearchDto) {
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, enum: RoomBookingStatus })
+  @ApiQuery({ name: 'roomId', required: false, type: Number })
+  @ApiQuery({ name: 'userId', required: false, type: Number })
+  @ApiQuery({ name: 'restaurantId', required: false, type: Number })
+  @ApiQuery({ name: 'startDate', required: false, type: String })
+  @ApiQuery({ name: 'endDate', required: false, type: String })
+  findAllBookings(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: RoomBookingStatus,
+    @Query('roomId') roomId?: string,
+    @Query('userId') userId?: string,
+    @Query('restaurantId') restaurantId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const searchDto: BookingSearchDto = {
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20,
+      status,
+      roomId: roomId ? parseInt(roomId, 10) : undefined,
+      userId: userId ? parseInt(userId, 10) : undefined,
+      restaurantId: restaurantId ? parseInt(restaurantId, 10) : undefined,
+      startDate,
+      endDate,
+    };
     return this.roomService.findAllBookings(searchDto);
   }
 

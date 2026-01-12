@@ -60,7 +60,7 @@ export class UserService {
     isAvailable?: boolean;
     page?: number;
     limit?: number;
-  }): Promise<User[]> {
+  }): Promise<{ data: User[]; total: number; page: number; limit: number; totalPages: number }> {
     const queryBuilder = this.userRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.role', 'role')
@@ -98,15 +98,27 @@ export class UserService {
       queryBuilder.andWhere('user.isAvailable = :isAvailable', { isAvailable: options.isAvailable });
     }
 
-    if (options?.page && options?.limit) {
-      queryBuilder
-        .skip((options.page - 1) * options.limit)
-        .take(options.limit);
-    } else if (options?.limit) {
-      queryBuilder.take(options.limit);
-    }
+    const page = options?.page || 1;
+    const limit = options?.limit || 10;
 
-    return queryBuilder.getMany();
+    // Get total count
+    const total = await queryBuilder.getCount();
+
+    // Apply pagination
+    queryBuilder
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const data = await queryBuilder.getMany();
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
   // -----------------------------------------------------

@@ -125,14 +125,14 @@ export class AnalyticsController {
   @ApiQuery({ type: AnalyticsQueryDto })
   async getMyBehaviorAnalytics(@Query() query: AnalyticsQueryDto, @Request() req) {
     console.log('🔍 Analytics Controller - req.user:', req.user);
-    
-    // Use sub as primary ID, fall back to id for backward compatibility
-    const userId = req.user?.sub || req.user?.id;
-    
+
+    // Use id from JWT payload
+    const userId = req.user?.id;
+
     if (!userId) {
       throw new Error('User ID not found in JWT payload');
     }
-    
-    return this.analyticsService.getUserBehaviorAnalytics(userId, query);
+
+    return this.analyticsService.getUserBehaviorAnalytics(userId.toString(), query);
   }
 }

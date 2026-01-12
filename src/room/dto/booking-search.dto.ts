@@ -1,19 +1,22 @@
-import { IsOptional, IsUUID, IsDateString, IsEnum, IsNumber } from 'class-validator';
+import { IsOptional, IsInt, IsDateString, IsEnum, IsNumber, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RoomBookingStatus } from '../entities/room-booking.entity';
 
 export class BookingSearchDto {
-  @IsUUID()
+  @IsInt()
+  @Type(() => Number)
   @IsOptional()
-  roomId?: string;
+  roomId?: number;
 
-  @IsUUID()
+  @IsInt()
+  @Type(() => Number)
   @IsOptional()
-  userId?: string;
+  userId?: number;
 
-  @IsUUID()
+  @IsInt()
+  @Type(() => Number)
   @IsOptional()
-  restaurantId?: string;
+  restaurantId?: number;
 
   @IsDateString()
   @IsOptional()
@@ -23,8 +26,8 @@ export class BookingSearchDto {
   @IsOptional()
   endDate?: string;
 
-  @IsEnum(RoomBookingStatus)
   @IsOptional()
+  @IsEnum(RoomBookingStatus)
   status?: RoomBookingStatus;
 
   @IsNumber()
