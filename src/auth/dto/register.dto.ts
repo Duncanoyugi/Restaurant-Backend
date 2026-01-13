@@ -11,7 +11,9 @@ export class RegisterDto {
   email: string;
 
   @IsNotEmpty()
-  @IsPhoneNumber()
+  @IsPhoneNumber('KE', {
+    message: 'Please enter a valid phone number (e.g., 0712345678 or +254...)'
+  })
   phone: string;
 
   @IsNotEmpty()

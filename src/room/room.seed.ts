@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Room } from './entities/room.entity';
@@ -6,6 +6,8 @@ import { Restaurant } from '../restaurant/entities/restaurant.entity';
 
 @Injectable()
 export class RoomSeeder implements OnModuleInit {
+    private readonly logger = new Logger(RoomSeeder.name);
+
     constructor(
         @InjectRepository(Room)
         private roomRepo: Repository<Room>,
@@ -19,12 +21,12 @@ export class RoomSeeder implements OnModuleInit {
             try {
                 await this.seedRooms();
             } catch (error) {
-                console.error('Error seeding rooms:', error.message);
+                this.logger.error(`Error seeding rooms: ${error.message}`);
                 setTimeout(async () => {
                     try {
                         await this.seedRooms();
                     } catch (retryError) {
-                        console.error('Error seeding rooms on retry:', retryError.message);
+                        this.logger.error(`Error seeding rooms on retry: ${retryError.message}`);
                     }
                 }, 20000);
             }
@@ -38,7 +40,7 @@ export class RoomSeeder implements OnModuleInit {
         });
 
         if (!restaurant) {
-            console.error('Default restaurant not found. Cannot seed rooms.');
+            this.logger.error('Default restaurant not found. Cannot seed rooms.');
             return;
         }
 
@@ -221,6 +223,8 @@ export class RoomSeeder implements OnModuleInit {
             },
         ];
 
+        let createCount = 0;
+        let updateCount = 0;
         for (const roomData of roomsData) {
             const existingRoom = await this.roomRepo.findOne({
                 where: { name: roomData.name, restaurantId: restaurant.id },
@@ -232,15 +236,15 @@ export class RoomSeeder implements OnModuleInit {
                     restaurantId: restaurant.id,
                 });
                 await this.roomRepo.save(newRoom);
-                console.log(`Created room: ${newRoom.name}`);
+                createCount++;
             } else {
-                // Update existing room with new fields
                 await this.roomRepo.update(existingRoom.id, {
                     ...roomData,
-                    // We don't overwrite ID or restaurantId
                 });
-                console.log(`Updated room: ${existingRoom.name}`);
+                updateCount++;
             }
         }
+        if (createCount > 0) this.logger.log(`✅ Created ${createCount} new rooms`);
+        if (updateCount > 0) this.logger.log(`✅ Updated ${updateCount} existing rooms`);
     }
 }

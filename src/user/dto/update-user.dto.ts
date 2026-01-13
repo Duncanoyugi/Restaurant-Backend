@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsPhoneNumber, IsString, MinLength } from 'class-validator';
 
 export class UpdateUserDto {
   @IsString()
@@ -8,6 +8,12 @@ export class UpdateUserDto {
   @IsEmail()
   @IsOptional()
   email?: string;
+
+  @IsPhoneNumber('KE', {
+    message: 'Please enter a valid phone number'
+  })
+  @IsOptional()
+  phone?: string;
 
   @IsString()
   @MinLength(6)

@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Country } from './entities/country.entity';
@@ -7,6 +7,8 @@ import { City } from './entities/city.entity';
 
 @Injectable()
 export class LocationSeeder implements OnModuleInit {
+  private readonly logger = new Logger(LocationSeeder.name);
+
   constructor(
     @InjectRepository(Country)
     private countryRepo: Repository<Country>,
@@ -22,13 +24,13 @@ export class LocationSeeder implements OnModuleInit {
       try {
         await this.seedLocations();
       } catch (error) {
-        console.error('Error seeding locations:', error.message);
+        this.logger.error(`Error seeding locations: ${error.message}`);
         // Try again after a longer delay
         setTimeout(async () => {
           try {
             await this.seedLocations();
           } catch (retryError) {
-            console.error('Error seeding locations on retry:', retryError.message);
+            this.logger.error(`Error seeding locations on retry: ${retryError.message}`);
           }
         }, 15000);
       }
@@ -41,7 +43,7 @@ export class LocationSeeder implements OnModuleInit {
       await this.seedStates();
       await this.seedCities();
     } catch (error) {
-      console.error('Error seeding locations on retry:', error.message);
+      this.logger.error(`Error seeding locations: ${error.message}`);
     }
   }
 
@@ -50,13 +52,15 @@ export class LocationSeeder implements OnModuleInit {
       { name: 'Kenya', iso3: 'KEN', iso2: 'KE', phoneCode: '+254', currency: 'KES' },
     ];
 
+    let count = 0;
     for (const countryData of countries) {
       const exists = await this.countryRepo.findOne({ where: { iso3: countryData.iso3 } });
       if (!exists) {
         await this.countryRepo.save(this.countryRepo.create(countryData));
-        console.log(`Seeded country: ${countryData.name}`);
+        count++;
       }
     }
+    if (count > 0) this.logger.log(`✅ Seeded ${count} countries`);
   }
 
   private async seedStates() {
@@ -76,13 +80,15 @@ export class LocationSeeder implements OnModuleInit {
       { name: 'Siaya', code: 'SIAYA', countryId: kenya.id },
     ];
 
+    let count = 0;
     for (const stateData of states) {
       const exists = await this.stateRepo.findOne({ where: { name: stateData.name, countryId: stateData.countryId } });
       if (!exists) {
         await this.stateRepo.save(this.stateRepo.create(stateData));
-        console.log(`Seeded state: ${stateData.name}`);
+        count++;
       }
     }
+    if (count > 0) this.logger.log(`✅ Seeded ${count} states`);
   }
 
   private async seedCities() {
@@ -134,15 +140,17 @@ export class LocationSeeder implements OnModuleInit {
       { name: 'Alego', stateName: 'Siaya' },
     ];
 
+    let count = 0;
     for (const cityData of citiesData) {
       const stateId = stateMap.get(cityData.stateName);
       if (stateId) {
         const exists = await this.cityRepo.findOne({ where: { name: cityData.name, stateId } });
         if (!exists) {
           await this.cityRepo.save(this.cityRepo.create({ name: cityData.name, stateId }));
-          console.log(`Seeded city: ${cityData.name} in ${cityData.stateName}`);
+          count++;
         }
       }
     }
+    if (count > 0) this.logger.log(`✅ Seeded ${count} cities`);
   }
 }

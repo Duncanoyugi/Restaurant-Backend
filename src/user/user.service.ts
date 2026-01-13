@@ -23,9 +23,14 @@ export class UserService {
   // CREATE USER (REGISTER) - FIXED (NO MANUAL HASHING)
   // -----------------------------------------------------
   async create(dto: CreateUserDto, roleName: string = 'Customer'): Promise<User> {
-    const existingUser = await this.findByEmail(dto.email);
-    if (existingUser) {
+    const existingEmail = await this.findByEmail(dto.email);
+    if (existingEmail) {
       throw new BadRequestException(`User with email ${dto.email} already exists`);
+    }
+
+    const existingPhone = await this.findByPhone(dto.phone);
+    if (existingPhone) {
+      throw new BadRequestException(`User with phone number ${dto.phone} already exists`);
     }
 
     const role = await this.roleRepository.findOne({ where: { name: roleName } });
@@ -139,6 +144,16 @@ export class UserService {
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { email },
+      relations: ['role'],
+    });
+  }
+
+  // -----------------------------------------------------
+  // FIND USER BY PHONE
+  // -----------------------------------------------------
+  async findByPhone(phone: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { phone },
       relations: ['role'],
     });
   }

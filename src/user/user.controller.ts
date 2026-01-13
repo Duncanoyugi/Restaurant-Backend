@@ -74,6 +74,34 @@ export class UserController {
     });
   }
 
+  // IMPORTANT: Specific routes like 'me/*' must come BEFORE parameterized routes like ':id'
+  @Get('me/dashboard')
+  @ApiOperation({ summary: 'Get current user dashboard data' })
+  @ApiResponse({ status: 200, description: 'Dashboard data retrieved successfully' })
+  getMyDashboard(@Req() req: any) {
+    return {
+      user: req.user,
+      message: 'Dashboard data retrieved successfully',
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  @Get('me/loyalty')
+  @ApiOperation({ summary: 'Get current user loyalty program information' })
+  @ApiResponse({ status: 200, description: 'Loyalty information retrieved successfully' })
+  getMyLoyalty(@Req() req: any) {
+    // Return default loyalty program data
+    // This can be expanded later with actual loyalty program implementation
+    return {
+      points: 0,
+      tier: 'Silver',
+      pointsNeeded: 500,
+      nextTier: 'Gold',
+      totalSpent: 0,
+      totalOrders: 0,
+    };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiResponse({ status: 200, description: 'User retrieved successfully' })
@@ -102,18 +130,6 @@ export class UserController {
   @ApiParam({ name: 'id', description: 'User ID', type: String })
   remove(@Param('id') id: string) {
     return this.userService.remove(parseInt(id));
-  }
-
-  @Get('me/dashboard')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get current user dashboard data' })
-  @ApiResponse({ status: 200, description: 'Dashboard data retrieved successfully' })
-  getMyDashboard(@Req() req: any) {
-    return {
-      user: req.user,
-      message: 'Dashboard data retrieved successfully',
-      timestamp: new Date().toISOString()
-    };
   }
 
 }

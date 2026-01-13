@@ -239,6 +239,49 @@ export class ReviewService {
     };
   }
 
+  async findByUser(userId: number, query: ReviewQueryDto) {
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+
+    const where: FindOptionsWhere<Review> = { userId };
+
+    const order: FindOptionsOrder<Review> = {};
+    switch (query.sortBy || ReviewSortBy.NEWEST) {
+      case ReviewSortBy.NEWEST:
+        order.createdAt = 'DESC';
+        break;
+      case ReviewSortBy.OLDEST:
+        order.createdAt = 'ASC';
+        break;
+      case ReviewSortBy.HIGHEST_RATING:
+        order.rating = 'DESC';
+        break;
+      case ReviewSortBy.LOWEST_RATING:
+        order.rating = 'ASC';
+        break;
+      default:
+        order.createdAt = 'DESC';
+    }
+
+    const [reviews, total] = await this.reviewRepository.findAndCount({
+      where,
+      relations: ['user', 'restaurant', 'menuItem'],
+      skip: (page - 1) * limit,
+      take: limit,
+      order,
+    });
+
+    const formattedReviews = reviews.map(review => this.formatReviewResponse(review));
+
+    return {
+      data: formattedReviews,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   async update(id: number, updateReviewDto: UpdateReviewDto, userId?: number, userRole?: UserRoleEnum) {
     const review = await this.reviewRepository.findOne({
       where: { id },
