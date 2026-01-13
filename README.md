@@ -34,7 +34,7 @@ This backend provides RESTful APIs for managing restaurant operations including 
 - Profile management
 - User status tracking
 
-#### 🍽️ Menu Management
+#### Menu Management
 - Category-based menu organization
 - Menu item CRUD operations
 - Bulk menu operations

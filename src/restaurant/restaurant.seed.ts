@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Restaurant } from './entities/restaurant.entity';
@@ -7,6 +7,8 @@ import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class RestaurantSeeder implements OnModuleInit {
+    private readonly logger = new Logger(RestaurantSeeder.name);
+
     constructor(
         @InjectRepository(Restaurant)
         private restaurantRepo: Repository<Restaurant>,
@@ -22,13 +24,13 @@ export class RestaurantSeeder implements OnModuleInit {
             try {
                 await this.seedDefaultRestaurant();
             } catch (error) {
-                console.error('Error seeding default restaurant:', error.message);
+                this.logger.error(`Error seeding default restaurant: ${error.message}`);
                 // Try again after a longer delay
                 setTimeout(async () => {
                     try {
                         await this.seedDefaultRestaurant();
                     } catch (retryError) {
-                        console.error('Error seeding default restaurant on retry:', retryError.message);
+                        this.logger.error(`Error seeding default restaurant on retry: ${retryError.message}`);
                     }
                 }, 15000);
             }
@@ -43,7 +45,6 @@ export class RestaurantSeeder implements OnModuleInit {
             });
 
             if (existingRestaurant) {
-                console.log('Default restaurant already exists');
                 return;
             }
 
@@ -54,7 +55,7 @@ export class RestaurantSeeder implements OnModuleInit {
             });
 
             if (!nairobiCBD) {
-                console.error('Nairobi CBD city not found. Cannot seed default restaurant.');
+                this.logger.error('Nairobi CBD city not found. Cannot seed default restaurant.');
                 return;
             }
 
@@ -70,7 +71,7 @@ export class RestaurantSeeder implements OnModuleInit {
             }
 
             if (!owner) {
-                console.error('No owner user found. Cannot seed default restaurant.');
+                this.logger.error('No owner user found. Cannot seed default restaurant.');
                 return;
             }
 
@@ -95,9 +96,9 @@ export class RestaurantSeeder implements OnModuleInit {
             });
 
             await this.restaurantRepo.save(defaultRestaurant);
-            console.log('✅ Seeded default restaurant: The Grand Restaurant');
+            this.logger.log('✅ Seeded default restaurant: The Grand Restaurant');
         } catch (error) {
-            console.error('Error in seedDefaultRestaurant:', error);
+            this.logger.error('Error in seedDefaultRestaurant:', error);
             throw error;
         }
     }

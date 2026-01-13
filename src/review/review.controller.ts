@@ -34,7 +34,7 @@ import { UserRoleEnum } from '../user/entities/user.types';
 
 @ApiTags('reviews')
 @Controller('reviews')
-@UseGuards(RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ReviewController {
   constructor(private readonly reviewService: ReviewService) {}
 
@@ -58,6 +58,19 @@ export class ReviewController {
   @ApiQuery({ type: ReviewQueryDto })
   async findAll(@Query() query: ReviewQueryDto) {
     return this.reviewService.findAll(query);
+  }
+
+  // IMPORTANT: Specific routes like 'my' must come BEFORE parameterized routes like ':id'
+  @Get('my')
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRoleEnum.CUSTOMER, UserRoleEnum.ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get current user reviews' })
+  @ApiResponse({ status: 200, description: 'User reviews retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiQuery({ type: ReviewQueryDto })
+  async getMyReviews(@Query() query: ReviewQueryDto, @Request() req) {
+    return this.reviewService.findByUser(req.user.id, query);
   }
 
   @Get('restaurant/:restaurantId')

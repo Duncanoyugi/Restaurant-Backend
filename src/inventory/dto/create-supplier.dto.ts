@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsEmail } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsEmail, IsPhoneNumber } from 'class-validator';
 
 export class CreateSupplierDto {
   @IsString()
@@ -9,7 +9,9 @@ export class CreateSupplierDto {
   @IsNotEmpty()
   contactName: string;
 
-  @IsString()
+  @IsPhoneNumber('KE', {
+    message: 'Please enter a valid phone number'
+  })
   @IsNotEmpty()
   phone: string;
 

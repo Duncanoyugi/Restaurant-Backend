@@ -38,9 +38,14 @@ export class AuthService {
   // REGISTER WITH EMAIL VERIFICATION
   // =========================================================================
   async register(registerDto: RegisterDto) {
-    const existingUser = await this.usersService.findByEmail(registerDto.email);
-    if (existingUser) {
+    const existingEmail = await this.usersService.findByEmail(registerDto.email);
+    if (existingEmail) {
       throw new ConflictException('User with this email already exists');
+    }
+
+    const existingPhone = await this.usersService.findByPhone(registerDto.phone);
+    if (existingPhone) {
+      throw new ConflictException('User with this phone number already exists');
     }
 
     // Pass role from DTO, default to 'Customer' if not provided

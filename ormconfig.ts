@@ -13,7 +13,7 @@ export default new DataSource({
   schema: process.env.DB_SCHEMA || 'dbo',
   entities: ['src/**/*.entity{.ts,.js}'],
   synchronize: process.env.DB_SYNC === 'true',
-  logging: process.env.DB_LOGGING === 'true',
+  logging: ['error', 'warn'],
   migrations: ['src/migrations/*{.ts,.js}'],
   options: {
     encrypt: process.env.DB_ENCRYPT === 'true',

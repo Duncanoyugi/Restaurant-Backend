@@ -1,10 +1,12 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StatusCatalog } from './entities/status-catalog.entity';
 
 @Injectable()
 export class StatusCatalogSeeder implements OnModuleInit {
+  private readonly logger = new Logger(StatusCatalogSeeder.name);
+
   constructor(
     @InjectRepository(StatusCatalog)
     private statusCatalogRepository: Repository<StatusCatalog>,
@@ -16,13 +18,13 @@ export class StatusCatalogSeeder implements OnModuleInit {
       try {
         await this.seedStatusCatalog();
       } catch (error) {
-        console.error('Error seeding status catalog:', error.message);
+        this.logger.error(`Error seeding status catalog: ${error.message}`);
         // Try again after a delay
         setTimeout(async () => {
           try {
             await this.seedStatusCatalog();
           } catch (retryError) {
-            console.error('Error seeding status catalog on retry:', retryError.message);
+            this.logger.error(`Error seeding status catalog on retry: ${retryError.message}`);
           }
         }, 5000);
       }
@@ -32,9 +34,8 @@ export class StatusCatalogSeeder implements OnModuleInit {
   private async seedStatusCatalog() {
     try {
       // Check if statuses already exist
-      const existingStatuses = await this.statusCatalogRepository.find();
-      if (existingStatuses.length > 0) {
-        console.log('✅ Status catalog already seeded');
+      const existingStatusesCount = await this.statusCatalogRepository.count();
+      if (existingStatusesCount > 0) {
         return;
       }
 
@@ -78,6 +79,7 @@ export class StatusCatalogSeeder implements OnModuleInit {
       ];
 
       // Seed the statuses
+      let seededCount = 0;
       for (const statusData of statuses) {
         const existingStatus = await this.statusCatalogRepository.findOne({
           where: { name: statusData.name }
@@ -87,13 +89,15 @@ export class StatusCatalogSeeder implements OnModuleInit {
           await this.statusCatalogRepository.save(
             this.statusCatalogRepository.create(statusData)
           );
-          console.log(`✅ Seeded status: ${statusData.name}`);
+          seededCount++;
         }
       }
 
-      console.log('✅ Status catalog seeding completed');
+      if (seededCount > 0) {
+        this.logger.log(`✅ Seeded ${seededCount} order statuses`);
+      }
     } catch (error) {
-      console.error('Error in seedStatusCatalog:', error);
+      this.logger.error('Error in seedStatusCatalog:', error);
       throw error;
     }
   }

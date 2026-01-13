@@ -7,7 +7,7 @@ import {
   IsBoolean,
   Min,
   Max,
-  Matches
+  IsPhoneNumber
 } from 'class-validator';
 
 export class CreateRestaurantDto {
@@ -23,11 +23,10 @@ export class CreateRestaurantDto {
   @IsNotEmpty()
   email: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @Matches(/^[\+]?[1-9][\d]{0,15}$/, {
-    message: 'Phone number must be a valid international format'
+  @IsPhoneNumber('KE', {
+    message: 'Phone number must be a valid format (e.g., 0712345678 or +254...)'
   })
+  @IsNotEmpty()
   phone: string;
 
   @IsString()

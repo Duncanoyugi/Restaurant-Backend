@@ -12,7 +12,7 @@ export const databaseConfig = registerAs('database', () => ({
     __dirname + '/../**/*.entity{.ts,.js}'
   ],
   synchronize: false,
-  logging: process.env.DB_LOGGING === 'true',
+  logging: ['error', 'warn'],
   options: {
     encrypt: process.env.DB_ENCRYPT === 'true',
     trustServerCertificate: process.env.DB_TRUST_CERT === 'true',

@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MenuItem } from './entities/menu.entity';
@@ -7,6 +7,8 @@ import { Restaurant } from '../restaurant/entities/restaurant.entity';
 
 @Injectable()
 export class MenuSeeder implements OnModuleInit {
+    private readonly logger = new Logger(MenuSeeder.name);
+
     constructor(
         @InjectRepository(MenuItem)
         private menuItemRepo: Repository<MenuItem>,
@@ -22,12 +24,12 @@ export class MenuSeeder implements OnModuleInit {
             try {
                 await this.seedMenu();
             } catch (error) {
-                console.error('Error seeding menu:', error.message);
+                this.logger.error(`Error seeding menu: ${error.message}`);
                 setTimeout(async () => {
                     try {
                         await this.seedMenu();
                     } catch (retryError) {
-                        console.error('Error seeding menu on retry:', retryError.message);
+                        this.logger.error(`Error seeding menu on retry: ${retryError.message}`);
                     }
                 }, 20000);
             }
@@ -40,7 +42,7 @@ export class MenuSeeder implements OnModuleInit {
         });
 
         if (!restaurant) {
-            console.error('Default restaurant not found. Cannot seed menu.');
+            this.logger.error('Default restaurant not found. Cannot seed menu.');
             return;
         }
 
@@ -75,6 +77,7 @@ export class MenuSeeder implements OnModuleInit {
         const savedCategories: { [key: string]: Category } = {};
 
         // Seed Categories
+        let catCount = 0;
         for (const catData of categories) {
             let category = await this.categoryRepo.findOne({
                 where: { name: catData.name, restaurantId: restaurant.id },
@@ -86,10 +89,11 @@ export class MenuSeeder implements OnModuleInit {
                     restaurantId: restaurant.id,
                 });
                 await this.categoryRepo.save(category);
-                console.log(`Created category: ${category.name}`);
+                catCount++;
             }
             savedCategories[category.name] = category;
         }
+        if (catCount > 0) this.logger.log(`✅ Seeded ${catCount} menu categories`);
 
         // Seed Menu Items
         const menuItems = [
@@ -193,14 +197,15 @@ export class MenuSeeder implements OnModuleInit {
             }
         ];
 
+        let itemCount = 0;
+        let updateCount = 0;
         for (const itemData of menuItems) {
             const category = savedCategories[itemData.categoryName];
             if (!category) {
-                console.error(`Category not found for item: ${itemData.name} (${itemData.categoryName})`);
+                this.logger.warn(`Category not found for item: ${itemData.name} (${itemData.categoryName})`);
                 continue;
             }
 
-            // Remove categoryName from itemData before creating entity
             const { categoryName, ...data } = itemData;
 
             let menuItem = await this.menuItemRepo.findOne({
@@ -214,15 +219,16 @@ export class MenuSeeder implements OnModuleInit {
                     categoryId: category.id,
                 });
                 await this.menuItemRepo.save(menuItem);
-                console.log(`Created menu item: ${menuItem.name}`);
+                itemCount++;
             } else {
-                // Update existing item
                 await this.menuItemRepo.update(menuItem.id, {
                     ...data,
                     categoryId: category.id
                 });
-                console.log(`Updated menu item: ${menuItem.name}`);
+                updateCount++;
             }
         }
+        if (itemCount > 0) this.logger.log(`✅ Created ${itemCount} new menu items`);
+        if (updateCount > 0) this.logger.log(`✅ Updated ${updateCount} existing menu items`);
     }
 }
