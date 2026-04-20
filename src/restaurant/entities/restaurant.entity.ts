@@ -51,7 +51,7 @@ export class Restaurant {
   @Column({ type: 'time', nullable: true, name: 'closing_time' })
   closingTime: string;
 
-  @Column({ type: 'bit', default: 1 })
+  @Column({ type: 'boolean', default: true })
   active: boolean;
 
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0, name: 'average_rating' })

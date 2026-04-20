@@ -43,18 +43,18 @@ export class Otp {
   })
   status: OtpStatus;
 
-  @Column({ type: 'datetime2', nullable: false })
+  @Column({ type: 'timestamp', nullable: false })
   expires_at: Date;
 
-  @Column({ type: 'datetime2', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   verified_at: Date;
 
   @Column({ type: 'int', default: 0 })
   attempts: number;
 
-  @CreateDateColumn({ type: 'datetime2' })
+  @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;
 
-  @UpdateDateColumn({ type: 'datetime2' })
+  @UpdateDateColumn({ type: 'timestamp' })
   updated_at: Date;
 }

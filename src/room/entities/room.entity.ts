@@ -44,11 +44,10 @@ export class Room {
   @Column({ type: 'varchar', length: 50, nullable: true })
   category: string;
 
-  // FIX: Change simple-json to nvarchar for MSSQL
-  @Column({ type: 'nvarchar', nullable: true })
+  @Column({ type: 'text', nullable: true })
   amenities: string;
 
-  @Column({ type: 'nvarchar', nullable: true })
+  @Column({ type: 'text', nullable: true })
   features: string;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
@@ -57,33 +56,33 @@ export class Room {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'image_url' })
   imageUrl: string;
 
-  // FIX: Change simple-json to nvarchar for MSSQL
-  @Column({ type: 'nvarchar', nullable: true, name: 'image_gallery' })
+  // FIX: Change simple-json to nvarchar for MSSQL -> use text/varchar for PG
+  @Column({ type: 'text', nullable: true, name: 'image_gallery' })
   imageGallery: string;
 
   // FIX: Change boolean to bit for MSSQL
-  @Column({ type: 'bit', default: 1 })
+  @Column({ type: 'boolean', default: true })
   available: boolean;
 
-  @Column({ type: 'bit', default: 0 })
+  @Column({ type: 'boolean', default: false })
   featured: boolean;
 
-  @Column({ type: 'bit', default: 0 })
+  @Column({ type: 'boolean', default: false })
   popular: boolean;
 
-  @Column({ type: 'bit', default: 0 })
+  @Column({ type: 'boolean', default: false })
   family: boolean;
 
-  @Column({ type: 'bit', default: 0 })
+  @Column({ type: 'boolean', default: false })
   luxury: boolean;
 
-  @Column({ type: 'bit', default: 0 })
+  @Column({ type: 'boolean', default: false })
   romantic: boolean;
 
-  @Column({ type: 'bit', default: 0 })
+  @Column({ type: 'boolean', default: false })
   accessible: boolean;
 
-  @Column({ type: 'bit', default: 0, name: 'pet_friendly' })
+  @Column({ type: 'boolean', default: false, name: 'pet_friendly' })
   petFriendly: boolean;
 
   @ManyToOne(() => Restaurant, (restaurant) => restaurant.rooms)

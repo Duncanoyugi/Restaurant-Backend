@@ -42,16 +42,14 @@ export class MenuItem {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'image_url' })
   imageUrl: string;
 
-  // FIX: Change boolean to bit for MSSQL
-  @Column({ type: 'bit', default: 1 })
+  @Column({ type: 'boolean', default: true })
   available: boolean;
 
-  // FIX: Change boolean to bit for MSSQL
-  @Column({ type: 'bit', default: 0, name: 'is_featured' })
+  @Column({ type: 'boolean', default: false, name: 'is_featured' })
   isFeatured: boolean;
 
   @Column({ type: 'int', default: 0, name: 'preparation_time' })
-  preparationTime: number; // in minutes
+  preparationTime: number;
 
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0, name: 'average_rating' })
   averageRating: number;
@@ -62,7 +60,7 @@ export class MenuItem {
   @Column({ type: 'int', default: 0 })
   calories: number;
 
-  @Column({ type: 'nvarchar', nullable: true })
+  @Column({ type: 'text', nullable: true })
   allergens: string | null;
 
   @ManyToOne(() => Restaurant, (restaurant) => restaurant.menuItems)

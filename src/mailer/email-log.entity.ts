@@ -33,10 +33,10 @@ export class EmailLog {
   @Column({ type: 'text', nullable: true, name: 'error_message' })
   errorMessage: string;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   metadata: Record<string, any>;
 
-  @Column({ type: 'datetime', nullable: true, name: 'sent_at' })
+  @Column({ type: 'timestamp', nullable: true, name: 'sent_at' })
   sentAt: Date;
 
   @CreateDateColumn({ name: 'created_at' })

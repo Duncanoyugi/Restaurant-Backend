@@ -19,10 +19,10 @@ export class Shift {
   @Column({ name: 'staff_id' })
   staffId: number;
 
-  @Column({ type: 'datetime', name: 'start_time' })
+  @Column({ type: 'timestamp', name: 'start_time' })
   startTime: Date;
 
-  @Column({ type: 'datetime', name: 'end_time' })
+  @Column({ type: 'timestamp', name: 'end_time' })
   endTime: Date;
 
   @Column({ type: 'date', name: 'shift_date' })

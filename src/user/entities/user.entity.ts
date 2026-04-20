@@ -52,13 +52,13 @@ export class User {
   @Column({ type: 'varchar', length: 255, select: false })
   password: string;
 
-  @Column({ type: 'bit', default: 0, name: 'email_verified' })
+  @Column({ type: 'boolean', default: false, name: 'email_verified' })
   emailVerified: boolean;
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'profile_image' })
   profileImage: string;
 
-  @Column({ type: 'bit', default: 1 })
+  @Column({ type: 'boolean', default: true })
   active: boolean;
 
   // Add status field
@@ -71,17 +71,17 @@ export class User {
   @Column({ type: 'varchar', length: 100, nullable: true, name: 'verification_token' })
   verificationToken: string;
 
-  @Column({ type: 'datetime', nullable: true, name: 'reset_token_expiry' })
+  @Column({ type: 'timestamp', nullable: true, name: 'reset_token_expiry' })
   resetTokenExpiry: Date;
 
   @Column({ name: 'role_id' })
   roleId: number;
 
   // Driver-specific fields
-  @Column({ type: 'bit', default: 0, name: 'is_online' })
+  @Column({ type: 'boolean', default: false, name: 'is_online' })
   isOnline: boolean;
 
-  @Column({ type: 'bit', default: 0, name: 'is_available' })
+  @Column({ type: 'boolean', default: false, name: 'is_available' })
   isAvailable: boolean;
 
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true, name: 'current_latitude' })

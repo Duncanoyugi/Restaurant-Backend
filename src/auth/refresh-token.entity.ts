@@ -22,11 +22,10 @@ export class RefreshToken {
   @Column({ type: 'varchar', length: 500, unique: true })
   token: string;
 
-  @Column({ type: 'datetime', name: 'expires_at' })
+  @Column({ type: 'timestamp', name: 'expires_at' })
   expiresAt: Date;
 
-  // FIX: Change boolean to bit for MSSQL
-  @Column({ type: 'bit', default: 0 })
+  @Column({ type: 'boolean', default: false })
   revoked: boolean;
 
   @Column({ type: 'varchar', length: 50, nullable: true, name: 'ip_address' })

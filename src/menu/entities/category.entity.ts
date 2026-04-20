@@ -27,8 +27,8 @@ export class Category {
   @Column({ type: 'int', default: 0, name: 'sort_order' })
   sortOrder: number;
 
-  // FIX: Change boolean to bit for MSSQL
-  @Column({ type: 'bit', default: 1 })
+  // FIX: Change boolean to bit for MSSQL (FIX after PG migration)
+  @Column({ type: 'boolean', default: true })
   active: boolean;
 
   @OneToMany(() => MenuItem, (item) => item.category)

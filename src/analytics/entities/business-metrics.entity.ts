@@ -82,10 +82,10 @@ export class BusinessMetrics {
   occupancyRate: number;
 
   // Menu performance
-  @Column({ type: 'nvarchar', nullable: true, name: 'top_selling_items' })
+  @Column({ type: 'text', nullable: true, name: 'top_selling_items' })
   topSellingItems: string;
 
-  @Column({ type: 'nvarchar', nullable: true, name: 'low_performing_items' })
+  @Column({ type: 'text', nullable: true, name: 'low_performing_items' })
   lowPerformingItems: string;
 
   // Operational metrics

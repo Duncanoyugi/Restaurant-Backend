@@ -22,9 +22,9 @@ export class UserRole {
   @Column({ type: 'varchar', length: 255, nullable: true })
   description: string;
 
-  // FIX: Use text or nvarchar for JSON in MSSQL
-  @Column({ type: 'nvarchar', nullable: true })
-  permissions: string; // Store as JSON string
+  // Store permissions as JSON string
+  @Column({ type: 'text', nullable: true })
+  permissions: string;
 
   @OneToMany(() => User, (user) => user.role)
   users: User[];

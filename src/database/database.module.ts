@@ -6,37 +6,29 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     imports: [
         ConfigModule,
         TypeOrmModule.forRootAsync({
-            inject: [ConfigService],
-            useFactory: (config: ConfigService) => ({
-                type: 'mssql',
-                host: config.get<string>('DB_HOST'),
-                port: Number(config.get<string>('DB_PORT')) || 1433,
-                username: config.get<string>('DB_USERNAME'),
-                password: config.get<string>('DB_PASSWORD'),
-                database: config.get<string>('DB_NAME'),
-                schema: config.get<string>('DB_SCHEMA') || 'dbo',
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    type: 'postgres',
+    host: config.get<string>('DB_HOST'),
+    port: Number(config.get<string>('DB_PORT')) || 5432,
+    username: config.get<string>('DB_USERNAME'),
+    password: config.get<string>('DB_PASSWORD'),
+    database: config.get<string>('DB_NAME'),
+    schema: config.get<string>('DB_SCHEMA') || 'public',
 
-                // ✅ Let Nest auto-register entities
-                autoLoadEntities: true,
+    autoLoadEntities: true,
+    synchronize: false,
+    logging: false,
 
-                // 🔴 NEVER enable in production
-                synchronize: false,
-                logging: false,
-
-                options: {
-                    encrypt: true,
-                    trustServerCertificate: true,
-                    enableAnsiNullDefault: true,
-                },
-
-                // 🔥 CRITICAL: prevent MSSQL connection explosion
-                pool: {
-                    max: 5,
-                    min: 1,
-                    idleTimeoutMillis: 30000,
-                },
-            }),
-        }),
+    ssl: config.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
+    pool: {
+      max: 10,
+      min: 2,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+    },
+  }),
+}),
     ],
 })
 export class DatabaseModule { }

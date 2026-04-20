@@ -82,13 +82,13 @@ export class Order {
   @Column({ type: 'text', nullable: true })
   comment: string;
 
-  @Column({ type: 'datetime', nullable: true, name: 'estimated_delivery_time' })
+  @Column({ type: 'timestamp', nullable: true, name: 'estimated_delivery_time' })
   estimatedDeliveryTime: Date;
 
-  @Column({ type: 'datetime', nullable: true, name: 'actual_delivery_time' })
+  @Column({ type: 'timestamp', nullable: true, name: 'actual_delivery_time' })
   actualDeliveryTime: Date;
 
-  @Column({ type: 'datetime', nullable: true, name: 'scheduled_time' })
+  @Column({ type: 'timestamp', nullable: true, name: 'scheduled_time' })
   scheduledTime: Date;
 
   @ManyToOne(() => Restaurant, (restaurant) => restaurant.orders)

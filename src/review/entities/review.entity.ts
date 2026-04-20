@@ -38,18 +38,17 @@ export class Review {
   @Column({ type: 'text', nullable: true })
   comment: string;
 
-  // FIX: Change simple-json to nvarchar for MSSQL
-  @Column({ type: 'nvarchar', nullable: true })
+  // Images stored as JSON array of URLs
+  @Column({ type: 'varchar', nullable: true })
   images: string;
 
-  // FIX: Change boolean to bit for MSSQL
-  @Column({ type: 'bit', default: 1 })
+  @Column({ type: 'boolean', default: true })
   verified: boolean;
 
   @Column({ type: 'text', nullable: true, name: 'admin_response' })
   adminResponse: string;
 
-  @Column({ type: 'datetime', nullable: true, name: 'response_date' })
+  @Column({ type: 'timestamp', nullable: true, name: 'response_date' })
   responseDate: Date;
 
   @ManyToOne(() => User, (user) => user.reviews)

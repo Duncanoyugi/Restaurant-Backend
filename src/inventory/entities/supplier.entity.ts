@@ -28,8 +28,7 @@ export class Supplier {
   @Column({ type: 'varchar', length: 255 })
   address: string;
 
-  // FIX: Change boolean to bit for MSSQL
-  @Column({ type: 'bit', default: 1 })
+  @Column({ type: 'boolean', default: true })
   active: boolean;
 
   @OneToMany(() => InventoryItem, (item) => item.supplier)

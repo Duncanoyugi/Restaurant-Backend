@@ -98,10 +98,10 @@ export class ActivityLog {
   @Column({ type: 'varchar', length: 100, name: 'entity_id' })
   entityId: string;
 
-  @Column({ type: 'nvarchar', nullable: true, name: 'old_values' })
+  @Column({ type: 'text', nullable: true, name: 'old_values' })
   oldValues: string;
 
-  @Column({ type: 'nvarchar', nullable: true, name: 'new_values' })
+  @Column({ type: 'text', nullable: true, name: 'new_values' })
   newValues: string;
 
   @Column({ type: 'varchar', length: 50, nullable: true, name: 'ip_address' })
@@ -120,7 +120,7 @@ export class ActivityLog {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ type: 'datetime' })
+  @Column({ type: 'timestamp' })
   timestamp: Date;
 
   @CreateDateColumn({ name: 'created_at' })

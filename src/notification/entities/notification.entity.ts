@@ -98,28 +98,28 @@ export class Notification {
   @Column({ type: 'varchar', length: 20, default: NotificationPriority.MEDIUM })
   priority: NotificationPriority;
 
-  @Column({ type: 'nvarchar', nullable: true })
-  metadata: string; // JSON data for additional context
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'metadata' })
+  metadata: string;
 
   @Column({ type: 'varchar', length: 50, default: NotificationChannel.IN_APP })
   channel: NotificationChannel;
 
-  @Column({ type: 'bit', default: 0, name: 'is_read' })
+  @Column({ type: 'boolean', default: false, name: 'is_read' })
   isRead: boolean;
 
-  @Column({ type: 'datetime', nullable: true, name: 'read_at' })
+  @Column({ type: 'timestamp', nullable: true, name: 'read_at' })
   readAt: Date;
 
-  @Column({ type: 'bit', default: 0, name: 'is_sent' })
+  @Column({ type: 'boolean', default: false, name: 'is_sent' })
   isSent: boolean;
 
-  @Column({ type: 'datetime', nullable: true, name: 'sent_at' })
+  @Column({ type: 'timestamp', nullable: true, name: 'sent_at' })
   sentAt: Date;
 
-  @Column({ type: 'datetime', nullable: true, name: 'scheduled_for' })
-  scheduledFor: Date; // For scheduled notifications
+  @Column({ type: 'timestamp', nullable: true, name: 'scheduled_for' })
+  scheduledFor: Date;
 
-  @Column({ type: 'datetime', nullable: true, name: 'expires_at' })
+  @Column({ type: 'timestamp', nullable: true, name: 'expires_at' })
   expiresAt: Date;
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'action_url' })

@@ -22,7 +22,7 @@ export class DriverAssignment {
   @Column({ default: 'active' })
   status: string; // active, inactive, busy
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   workingHours: {
     start: string;
     end: string;

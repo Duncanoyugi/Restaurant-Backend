@@ -88,17 +88,13 @@ export class Payment {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   refunded_amount: number;
 
-  @Column({
-    type: 'datetime2',
-    nullable: true,
-    default: () => 'CURRENT_TIMESTAMP',
-  })
+  @Column({ type: 'timestamp', nullable: true, default: () => 'CURRENT_TIMESTAMP' })
   processed_at?: Date;
 
-  @Column({ type: 'datetime2', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   failed_at?: Date;
 
-  @Column({ type: 'datetime2', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   paid_at?: Date;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -107,7 +103,7 @@ export class Payment {
   @Column({ type: 'varchar', length: 2000, nullable: true })
   metadata?: string;
 
-  @Column({ type: 'bit', default: false })
+  @Column({ type: 'boolean', default: false })
   delivery_initiated: boolean;
 
   @Column({ type: 'int', nullable: true })

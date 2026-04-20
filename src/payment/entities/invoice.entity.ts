@@ -23,10 +23,10 @@ export class Invoice {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'pdf_url' })
   pdfUrl: string;
 
-  @Column({ type: 'datetime', name: 'issued_at' })
+  @Column({ type: 'timestamp', name: 'issued_at' })
   issuedAt: Date;
 
-  @Column({ type: 'datetime', nullable: true, name: 'sent_at' })
+  @Column({ type: 'timestamp', nullable: true, name: 'sent_at' })
   sentAt: Date;
 
   @ManyToOne(() => Payment, (payment) => payment.invoices)

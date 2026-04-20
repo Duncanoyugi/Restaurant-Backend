@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: restaurant-backend-lotj
+    env: node
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /auth/status
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        value: ep-falling-shadow-amknu7sc-pooler.c-5.us-east-1.aws.neon.tech
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_USERNAME
+        value: neondb_owner
+      - key: DB_PASSWORD
+        value: npg_tnlkQaI59XYh
+      - key: DB_NAME
+        value: neondb
+      - key: DB_SCHEMA
+        value: public
+      - key: DB_SSL
+        value: "true"
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: PAYSTACK_SECRET_KEY
+        value: sk_test_5123f5fa883fc9e65ce6b3bb3dc708a4082992fc
+      - key: PAYSTACK_PUBLIC_KEY
+        value: pk_test_5b0b2f828c0e72ced402b9f2982b6e5f96a1f5a6
+      - key: FRONTEND_URL
+        value: https://restaurant-frontend-gray.vercel.app
+      - key: BACKEND_URL
+        value: https://restaurant-backend-lotj.onrender.com
+      - key: SMTP_HOST
+        value: sandbox.smtp.mailtrap.io
+      - key: SMTP_PORT
+        value: "2525"
+      - key: SMTP_USER
+        value: 3734a7bd6298ed
+      - key: SMTP_PASS
+        value: be434533a0db96
+      - key: DEFAULT_FROM_EMAIL
+        value: duncanoyugi2001@gmail.com
+      - key: DEFAULT_FROM_NAME
+        value: Restaurant Management
+      - key: STORE_URL
+        value: https://restaurant-backend-lotj.onrender.com
+      - key: PORT
+        value: "3000"

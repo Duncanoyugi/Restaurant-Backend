@@ -33,8 +33,8 @@ export class RestaurantStaff {
   @Column({ type: 'date', name: 'hire_date' })
   hireDate: Date;
 
-  // FIX: Change boolean to bit for MSSQL
-  @Column({ type: 'bit', default: 1 })
+  // FIX: Change boolean to bit for MSSQL (FIXED: now boolean for PG)
+  @Column({ type: 'boolean', default: true })
   active: boolean;
 
   @Column({ type: 'varchar', length: 100, nullable: true, name: 'emergency_contact' })
