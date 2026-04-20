@@ -104,14 +104,19 @@ export class PaymentController {
   })
   @ApiBody({ type: PaystackWebhookDto })
   async handleWebhook(
-    @Body() paystackWebhookDto: PaystackWebhookDto,
+    @Body() _paystackWebhookDto: PaystackWebhookDto,
     @Headers('x-paystack-signature') signature: string,
+    @Request() req,
   ) {
     if (!signature) {
       throw new BadRequestException('Missing webhook signature');
     }
+    const rawPayload = req.rawBody?.toString('utf8');
+    if (!rawPayload) {
+      throw new BadRequestException('Webhook payload is missing');
+    }
 
-    return this.paymentService.handleWebhook(paystackWebhookDto, signature);
+    return this.paymentService.handleWebhook(rawPayload, signature);
   }
 
   /**

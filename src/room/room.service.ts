@@ -83,7 +83,11 @@ export class RoomService {
     
     const skip = (page - 1) * limit;
 
-    const where: FindOptionsWhere<Room> = { restaurantId: Number(restaurantId) };
+    const where: FindOptionsWhere<Room> = {};
+
+    if (restaurantId !== undefined && restaurantId !== null) {
+      where.restaurantId = Number(restaurantId);
+    }
 
     if (minCapacity !== undefined) {
       where.capacity = MoreThanOrEqual(minCapacity);
@@ -415,13 +419,18 @@ export class RoomService {
     }
 
     // Get all rooms for the restaurant
+    const roomWhere: FindOptionsWhere<Room> = {
+      available: true,
+      ...(minCapacity && { capacity: MoreThanOrEqual(minCapacity) }),
+      ...(maxPrice && { pricePerNight: LessThanOrEqual(maxPrice) }),
+    };
+
+    if (restaurantId !== undefined && restaurantId !== null) {
+      roomWhere.restaurantId = Number(restaurantId);
+    }
+
     const rooms = await this.roomRepository.find({
-      where: { 
-        restaurantId,
-        available: true,
-        ...(minCapacity && { capacity: MoreThanOrEqual(minCapacity) }),
-        ...(maxPrice && { pricePerNight: LessThanOrEqual(maxPrice) })
-      },
+      where: roomWhere,
       relations: ['restaurant']
     });
 
@@ -553,6 +562,57 @@ export class RoomService {
     if (!validTransitions[currentStatus].includes(newStatus)) {
       throw new BadRequestException(`Invalid status transition from ${currentStatus} to ${newStatus}`);
     }
+  }
+
+  async findRoomsByRestaurant(restaurantId: number, searchDto: RoomSearchDto): Promise<{ data: Room[], total: number }> {
+    const { 
+      minCapacity, 
+      maxPrice, 
+      available, 
+      checkInDate, 
+      checkOutDate, 
+      guests, 
+      page = 1, 
+      limit = 20 
+    } = searchDto; 
+     
+    const skip = (page - 1) * limit; 
+    
+    const where: FindOptionsWhere<Room> = { restaurantId: Number(restaurantId) }; 
+    
+    if (minCapacity !== undefined) {
+      where.capacity = MoreThanOrEqual(minCapacity);
+    }
+    
+    if (maxPrice !== undefined) {
+      where.pricePerNight = LessThanOrEqual(maxPrice);
+    }
+    
+    if (available !== undefined) {
+      where.available = available;
+    }
+    
+    const [data, total] = await this.roomRepository.findAndCount({
+      where,
+      relations: ['restaurant', 'bookings'],
+      skip,
+      take: limit,
+      order: { 
+        pricePerNight: 'ASC',
+        capacity: 'DESC'
+      }
+    });
+    
+    // Parse amenities and imageGallery from JSON strings
+    const parsedData = data.map(room => this.parseRoomData(room));
+    
+    // Filter available rooms based on dates if provided
+    let filteredData = parsedData;
+    if (checkInDate && checkOutDate) {
+      filteredData = await this.filterAvailableRooms(parsedData, checkInDate, checkOutDate, guests);
+    }
+    
+    return { data: filteredData, total: filteredData.length };
   }
 
   private parseRoomData(room: Room): Room {

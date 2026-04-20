@@ -1,4 +1,3 @@
-// backend\src\reservation\reservation.controller.ts
 import { 
   Controller, 
   Get, 
@@ -320,5 +319,33 @@ export class ReservationController {
   @ApiResponse({ status: 403, description: 'Forbidden - Restaurant Owner or Staff access required' })
   getMyRestaurantTables(@Request() req) {
     return this.reservationService.getMyRestaurantTables(req.user);
+  }
+
+  @Get('restaurant/:restaurantId')
+  @UseGuards(RolesGuard)
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF)
+  @ApiOperation({ summary: 'Get all reservations for a specific restaurant (Admin, Restaurant Owner & Staff only)' })
+  @ApiResponse({ status: 200, description: 'Reservations retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin, Restaurant Owner or Staff access required' })
+  @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: String })
+  @ApiQuery({ name: 'page', description: 'Page number', required: false, type: Number })
+  @ApiQuery({ name: 'limit', description: 'Items per page', required: false, type: Number })
+  @ApiQuery({ name: 'status', description: 'Filter by status', required: false, enum: ['pending', 'confirmed', 'cancelled', 'completed'] })
+  getReservationsByRestaurant(
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
+    @Request() req,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('status') status?: string
+  ) {
+    const searchDto: ReservationSearchDto = {
+      restaurantId: String(restaurantId),
+      page,
+      limit,
+      status: status as any
+    };
+
+    return this.reservationService.findAllReservations(searchDto, req.user);
   }
 }

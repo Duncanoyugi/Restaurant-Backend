@@ -6,6 +6,7 @@ import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatus } from './entities/order-status.entity';
 import { StatusCatalog } from './entities/status-catalog.entity';
+import { MenuItem } from '../menu/entities/menu.entity';
 import { RestaurantModule } from '../restaurant/restaurant.module';
 import { StatusCatalogSeeder } from './status-catalog.seed';
 
@@ -15,7 +16,8 @@ import { StatusCatalogSeeder } from './status-catalog.seed';
       Order,
       OrderItem,
       OrderStatus,
-      StatusCatalog
+      StatusCatalog,
+      MenuItem
     ]),
     RestaurantModule, // This provides RestaurantRepository
   ],

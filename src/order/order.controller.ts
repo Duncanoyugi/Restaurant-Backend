@@ -224,8 +224,35 @@ export class OrderController {
   @Get('user/my-orders')
   @ApiOperation({ summary: 'Get current user orders' })
   @ApiResponse({ status: 200, description: 'User orders retrieved successfully' })
-  getMyOrders(@Request() req) {
-    const searchDto: OrderSearchDto = { userId: req.user.id };
+  async getMyOrders(
+    @Request() req,
+    @Query('status') status?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+  ) {
+    const searchDto: OrderSearchDto = { userId: req.user.id, page, limit };
+
+    if (status) {
+      const normalizedStatus = status.replace(/_/g, ' ').toLowerCase();
+      const supportedStatuses = [
+        'Pending',
+        'Preparing',
+        'Ready',
+        'Out for Delivery',
+        'Delivered',
+        'Completed',
+        'Cancelled',
+      ];
+      const statusName = supportedStatuses.find(
+        (candidate) => candidate.toLowerCase() === normalizedStatus,
+      );
+
+      if (statusName) {
+        const statusCatalog = await this.orderService.findStatusByName(statusName);
+        searchDto.statusId = statusCatalog.id;
+      }
+    }
+
     return this.orderService.findAllOrders(searchDto, req.user);
   }
 

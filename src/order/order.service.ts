@@ -24,6 +24,7 @@ import { User } from '../user/entities/user.entity';
 import { UserRoleEnum } from '../user/entities/user.types';
 import { Restaurant } from '../restaurant/entities/restaurant.entity';
 import { RestaurantService } from '../restaurant/restaurant.service';
+import { MenuItem } from '../menu/entities/menu.entity';
 
 @Injectable()
 export class OrderService {
@@ -38,6 +39,8 @@ export class OrderService {
     private statusCatalogRepository: Repository<StatusCatalog>,
     @InjectRepository(Restaurant)
     private restaurantRepository: Repository<Restaurant>,
+    @InjectRepository(MenuItem)
+    private menuItemRepository: Repository<MenuItem>,
     private restaurantService: RestaurantService,
   ) { }
 
@@ -174,9 +177,9 @@ export class OrderService {
       userId: createOrderDto.userId,
       orderType: createOrderDto.orderType,
       statusId: pendingStatus.id,
-      discount: createOrderDto.discount || 0,
-      deliveryFee: createOrderDto.deliveryFee || 0,
-      taxAmount: createOrderDto.taxAmount || 0,
+      discount: priceCalculation.discount,
+      deliveryFee: priceCalculation.deliveryFee,
+      taxAmount: priceCalculation.taxAmount,
       totalPrice: priceCalculation.totalPrice,
       finalPrice: priceCalculation.finalPrice,
     };
@@ -419,9 +422,10 @@ export class OrderService {
       order.deliveryAddressId = updateOrderDto.deliveryAddressId;
     }
     if (updateOrderDto.orderType !== undefined) order.orderType = updateOrderDto.orderType;
-    if (updateOrderDto.discount !== undefined) order.discount = updateOrderDto.discount || 0;
-    if (updateOrderDto.deliveryFee !== undefined) order.deliveryFee = updateOrderDto.deliveryFee || 0;
-    if (updateOrderDto.taxAmount !== undefined) order.taxAmount = updateOrderDto.taxAmount || 0;
+    // Pricing adjustments are computed on the server to prevent tampering.
+    if (priceUpdates.discount !== undefined) order.discount = priceUpdates.discount;
+    if (priceUpdates.deliveryFee !== undefined) order.deliveryFee = priceUpdates.deliveryFee;
+    if (priceUpdates.taxAmount !== undefined) order.taxAmount = priceUpdates.taxAmount;
     if (updateOrderDto.comment !== undefined) {
       order.comment = updateOrderDto.comment;
     }
@@ -812,34 +816,49 @@ export class OrderService {
 
   private async calculateOrderPrices(orderData: CreateOrderDto): Promise<{
     totalPrice: number;
+    discount: number;
+    deliveryFee: number;
+    taxAmount: number;
     finalPrice: number;
     itemPrices: Array<{ menuItemId: number; unitPrice: number; totalPrice: number }>;
   }> {
-    // This would typically fetch menu item prices from the database
-    // For now, we'll use mock prices - in production, you'd query the menu items
-    const itemPrices = await Promise.all(
-      orderData.items.map(async (item) => {
-        // In production, you'd fetch the actual price from the menu item
-        const unitPrice = 10; // Mock price - replace with actual database query
-        const totalPrice = unitPrice * item.quantity;
+    const menuItemIds = orderData.items.map((item) => item.menuItemId);
+    const menuItems = await this.menuItemRepository.find({
+      where: {
+        id: In(menuItemIds),
+        restaurantId: orderData.restaurantId,
+      },
+    });
+    const menuItemById = new Map(menuItems.map((menuItem) => [menuItem.id, menuItem]));
 
-        return {
-          menuItemId: item.menuItemId,
-          unitPrice,
-          totalPrice
-        };
-      })
-    );
+    const itemPrices = orderData.items.map((item) => {
+      const menuItem = menuItemById.get(item.menuItemId);
+      if (!menuItem || !menuItem.available) {
+        throw new BadRequestException(`Menu item ${item.menuItemId} is unavailable for this restaurant`);
+      }
+
+      const unitPrice = Number(menuItem.price);
+      const totalPrice = unitPrice * item.quantity;
+
+      return {
+        menuItemId: item.menuItemId,
+        unitPrice,
+        totalPrice
+      };
+    });
 
     const totalPrice = itemPrices.reduce((sum, item) => sum + item.totalPrice, 0);
-    const discount = orderData.discount || 0;
-    const deliveryFee = orderData.deliveryFee || 0;
-    const taxAmount = orderData.taxAmount || 0;
+    const discount = 0;
+    const deliveryFee = 0;
+    const taxAmount = 0;
 
     const finalPrice = totalPrice - discount + deliveryFee + taxAmount;
 
     return {
       totalPrice,
+      discount,
+      deliveryFee,
+      taxAmount,
       finalPrice,
       itemPrices
     };

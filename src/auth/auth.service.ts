@@ -48,9 +48,8 @@ export class AuthService {
       throw new ConflictException('User with this phone number already exists');
     }
 
-    // Pass role from DTO, default to 'Customer' if not provided
-    const roleName = registerDto.role || 'Customer';
-    const user = await this.usersService.create(registerDto, roleName);
+    // Never trust client-provided roles for self-registration.
+    const user = await this.usersService.create(registerDto, 'Customer');
 
     // Generate OTP for email verification
     const otpResult = await this.otpService.generateOtp(
@@ -63,9 +62,6 @@ export class AuthService {
       throw new InternalServerErrorException('Failed to generate OTP');
     }
 
-    // Log OTP for development testing
-    console.log(`🔐 OTP FOR ${user.email}: ${otpResult.otp.otp_code}`);
-
     // Send verification email - but don't throw error if it fails in development
     try {
       const emailSent = await this.mailerService.sendVerificationEmail(
@@ -75,11 +71,10 @@ export class AuthService {
       );
 
       if (!emailSent) {
-        console.log('Email sending failed, but OTP is saved to database');
+        console.warn('Email sending failed, but OTP is saved to database');
       }
     } catch (error) {
-      console.log('Email service unavailable, but OTP is saved to database');
-      console.log(`OTP Code: ${otpResult.otp.otp_code}`);
+      console.warn('Email service unavailable, but OTP is saved to database');
     }
 
     return {
@@ -151,28 +146,6 @@ export class AuthService {
     };
   }
 
-  // Add this to your AuthService
-  async debugPassword(email: string, testPassword: string) {
-    const user = await this.usersService.findByEmailWithPassword(email);
-    
-    if (!user) {
-      return { error: 'User not found' };
-    }
-
-    // Test the password directly
-    const isPasswordValid = await bcrypt.compare(testPassword, user.password);
-    
-    return {
-      email: user.email,
-      storedPasswordHash: user.password,
-      storedPasswordLength: user.password?.length,
-      testPassword: testPassword,
-      testPasswordLength: testPassword?.length,
-      passwordValid: isPasswordValid,
-      emailVerified: user.emailVerified,
-      status: user.status,
-    };
-  }
 
   // =========================================================================
   // LOGIN
@@ -241,36 +214,6 @@ export class AuthService {
     return user;
   }
 
-  // =========================================================================
-  // DEBUG USER DATA
-  // =========================================================================
-  async debugUser(email: string) {
-    const user = await this.usersService.findByEmailWithPassword(email);
-    
-    if (!user) {
-      return { error: 'User not found' };
-    }
-    
-    return {
-      email: user.email,
-      hasPassword: !!user.password,
-      passwordLength: user.password?.length,
-      passwordHash: user.password?.substring(0, 20) + '...',
-      emailVerified: user.emailVerified,
-      status: user.status,
-      role: user.role?.name,
-      roleLoaded: !!user.role,
-      userData: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        status: user.status,
-        emailVerified: user.emailVerified,
-        roleId: user.roleId,
-        role: user.role
-      }
-    };
-  }
 
   // =========================================================================
   // JWT TOKEN GENERATION
@@ -377,9 +320,6 @@ export class AuthService {
       throw new InternalServerErrorException('Failed to generate OTP');
     }
 
-    // Log OTP for development
-    console.log(`🔐 NEW OTP FOR ${user.email}: ${otpResult.otp.otp_code}`);
-
     // Try to send email, but don't fail if it doesn't work
     try {
       const emailSent = await this.mailerService.sendVerificationEmail(
@@ -389,11 +329,10 @@ export class AuthService {
       );
 
       if (!emailSent) {
-        console.log('Email sending failed, but new OTP is generated');
+        console.warn('Email sending failed, but new OTP is generated');
       }
     } catch (error) {
-      console.log('Email service unavailable, but new OTP is generated');
-      console.log(`New OTP Code: ${otpResult.otp.otp_code}`);
+      console.warn('Email service unavailable, but new OTP is generated');
     }
 
     return {

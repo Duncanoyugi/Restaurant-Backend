@@ -284,4 +284,19 @@ export class RoomController {
   ) {
     return this.roomService.getUpcomingCheckOuts(restaurantId, days);
   }
+
+  // Additional endpoint for restaurant-specific rooms
+  @Get('restaurant/:restaurantId')
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.RESTAURANT_OWNER, UserRoleEnum.RESTAURANT_STAFF, UserRoleEnum.CUSTOMER, UserRoleEnum.DRIVER)
+  @ApiOperation({ summary: 'Get all rooms for a specific restaurant' })
+  @ApiResponse({ status: 200, description: 'Rooms retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Restaurant not found' })
+  @ApiParam({ name: 'restaurantId', description: 'Restaurant ID', type: Number })
+  @ApiQuery({ type: RoomSearchDto })
+  findRoomsByRestaurant(
+    @Param('restaurantId', ParseIntPipe) restaurantId: number,
+    @Query() searchDto: RoomSearchDto
+  ) {
+    return this.roomService.findRoomsByRestaurant(restaurantId, searchDto);
+  }
 }

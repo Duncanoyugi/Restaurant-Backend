@@ -1,20 +1,37 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+
+const parseCorsOrigins = (): Array<string | RegExp> | boolean => {
+  if (process.env.NODE_ENV === 'production') {
+    const configuredOrigins = process.env.FRONTEND_URL?.split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+
+    if (!configuredOrigins || configuredOrigins.length === 0) {
+      throw new Error('FRONTEND_URL must be configured in production');
+    }
+
+    return configuredOrigins;
+  }
+
+  return [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+  ];
+};
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
-  // ✅ CORS (safe for production)
   app.enableCors({
-    origin: process.env.NODE_ENV === 'production'
-      ? true
-      : ['http://localhost:5173', 'http://localhost:3000'],
+    origin: parseCorsOrigins(),
     credentials: true,
   });
 
-  // ✅ Global validation
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -23,7 +40,6 @@ async function bootstrap() {
     }),
   );
 
-  // ✅ Swagger ONLY in development
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
       .setTitle('Restaurant Management System API')
@@ -44,11 +60,10 @@ async function bootstrap() {
     SwaggerModule.setup('api', app, document);
   }
 
-  // ✅ REQUIRED for Render
-  const port = process.env.PORT || 3000;
+  const port = Number(process.env.PORT || 3000);
   await app.listen(port);
 
-  console.log(`🚀 Backend running on port ${port}`);
+  console.log(`Backend running on port ${port}`);
 }
 
 bootstrap();

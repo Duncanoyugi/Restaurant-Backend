@@ -1,6 +1,28 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+const validateEnvironment = (config: Record<string, string | undefined>) => {
+  const commonRequired = ['DB_HOST', 'DB_PORT', 'DB_USERNAME', 'DB_PASSWORD', 'DB_NAME'];
+  const productionRequired = [
+    'JWT_ACCESS_SECRET',
+    'JWT_REFRESH_SECRET',
+    'PAYSTACK_SECRET_KEY',
+    'FRONTEND_URL',
+  ];
+
+  const requiredKeys = process.env.NODE_ENV === 'production'
+    ? [...commonRequired, ...productionRequired]
+    : commonRequired;
+
+  const missing = requiredKeys.filter((key) => !config[key]);
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+
+  return config;
+};
+
 import { DatabaseModule } from './database/database.module';
 import { MenuModule } from './menu/menu.module';
 import { OrderModule } from './order/order.module';
@@ -26,6 +48,7 @@ import { PushNotificationModule } from './push-notification/push-notification.mo
     // ✅ Render injects env vars – no .env file in production
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnvironment,
     }),
 
     // ✅ SINGLE database entry point

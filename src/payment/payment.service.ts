@@ -510,13 +510,14 @@ export class PaymentService {
   /**
    * Handle Paystack webhook events
    */
-  async handleWebhook(paystackWebhookDto: PaystackWebhookDto, signature: string) {
+  async handleWebhook(rawPayload: string, signature: string) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
       // Verify webhook signature
-      this.verifyWebhookSignature(JSON.stringify(paystackWebhookDto), signature);
+      this.verifyWebhookSignature(rawPayload, signature);
+      const paystackWebhookDto = JSON.parse(rawPayload) as PaystackWebhookDto;
       const { event, data } = paystackWebhookDto;
       this.logger.log(`Received webhook event: ${event} for reference: ${data.reference}`);
       // Handle different webhook events

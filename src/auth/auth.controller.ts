@@ -2,13 +2,13 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Req,
   UseGuards,
   HttpCode,
   HttpStatus,
-  UnauthorizedException,
-  BadRequestException
+  UnauthorizedException
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -26,7 +26,7 @@ import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { UserStatus } from '../user/entities/user.entity';
+import { UpdateUserDto } from '../user/dto/update-user.dto';
 
 // Strong typing for JWT payload
 interface JwtUserPayload {
@@ -123,48 +123,6 @@ export class AuthController {
     return this.authService.resendVerificationEmail(email);
   }
 
-  // Add this to your AuthController
-  @Post('debug-password')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Debug password issue (Development only)' })
-  async debugPassword(
-    @Body('email') email: string,
-    @Body('password') password: string
-  ) {
-    return this.authService.debugPassword(email, password);
-  }
-
-  @Post('dev-verify-email')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify email without OTP (Development only)' })
-  async devVerifyEmail(@Body('email') email: string) {
-    const user = await this.usersService.findByEmail(email);
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-
-    // Update user to mark email as verified and set status to active
-    const updatedUser = await this.usersService.update(user.id, {
-      emailVerified: true,
-      status: UserStatus.ACTIVE
-    } as any);
-
-    // Generate tokens
-    const tokens = await this.authService.generateTokens(updatedUser);
-
-    return {
-      message: 'Email verified successfully (DEV MODE)',
-      user: {
-        id: updatedUser.id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        emailVerified: true,
-      },
-      ...tokens,
-    };
-  }
-
   // =========================================================================
   // LOGIN
   // =========================================================================
@@ -186,37 +144,6 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
-  }
-
-  // =========================================================================
-  // DEBUG USER DATA
-  // =========================================================================
-  @Post('debug-user')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Debug user data (Development only)' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'User data retrieved' 
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'User not found' 
-  })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        email: {
-          type: 'string',
-          format: 'email',
-          example: 'user@example.com'
-        }
-      },
-      required: ['email']
-    }
-  })
-  async debugUser(@Body('email') email: string) {
-    return this.authService.debugUser(email);
   }
 
   // =========================================================================
@@ -346,6 +273,34 @@ export class AuthController {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('profile')
+  @ApiOperation({ summary: 'Update authenticated user profile' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({
+    status: 200,
+    description: 'User profile updated successfully'
+  })
+  async updateProfile(@Req() req: Request & { user: any }, @Body() body: UpdateUserDto) {
+    return this.usersService.update(req.user.sub, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  @ApiOperation({ summary: 'Change authenticated user password' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({
+    status: 200,
+    description: 'Password changed successfully'
+  })
+  async changePassword(
+    @Req() req: Request & { user: any },
+    @Body('currentPassword') currentPassword: string,
+    @Body('newPassword') newPassword: string,
+  ) {
+    return this.usersService.changePassword(req.user.sub, currentPassword, newPassword);
   }
 
   @UseGuards(JwtAuthGuard)

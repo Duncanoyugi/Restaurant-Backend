@@ -1,5 +1,5 @@
 // backend/src/user/user.service.ts
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -72,15 +72,15 @@ export class UserService {
       .where('user.deleted_at IS NULL');
 
     if (options?.name) {
-      queryBuilder.andWhere('user.name ILIKE :name', { name: `%${options.name}%` });
+      queryBuilder.andWhere('LOWER(user.name) LIKE LOWER(:name)', { name: `%${options.name}%` });
     }
 
     if (options?.email) {
-      queryBuilder.andWhere('user.email ILIKE :email', { email: `%${options.email}%` });
+      queryBuilder.andWhere('LOWER(user.email) LIKE LOWER(:email)', { email: `%${options.email}%` });
     }
 
     if (options?.phone) {
-      queryBuilder.andWhere('user.phone ILIKE :phone', { phone: `%${options.phone}%` });
+      queryBuilder.andWhere('LOWER(user.phone) LIKE LOWER(:phone)', { phone: `%${options.phone}%` });
     }
 
     if (options?.role) {
@@ -206,5 +206,86 @@ export class UserService {
     if (!user) throw new NotFoundException(`User with id ${id} not found`);
 
     await this.userRepository.delete(String(id));
+  }
+
+  async getStatistics() {
+    const [totalUsers, activeUsers, onlineUsers, verifiedUsers] = await Promise.all([
+      this.userRepository.count({ where: { deletedAt: null as any } }),
+      this.userRepository.count({ where: { status: UserStatus.ACTIVE, deletedAt: null as any } }),
+      this.userRepository.count({ where: { isOnline: true, deletedAt: null as any } }),
+      this.userRepository.count({ where: { emailVerified: true, deletedAt: null as any } }),
+    ]);
+
+    return {
+      totalUsers,
+      activeUsers,
+      onlineUsers,
+      verifiedUsers,
+      inactiveUsers: Math.max(totalUsers - activeUsers, 0),
+    };
+  }
+
+  async findOnlineUsers(): Promise<User[]> {
+    return this.userRepository.find({
+      where: { isOnline: true, deletedAt: null as any },
+      relations: ['role'],
+    });
+  }
+
+  async searchUsers(query: string, limit = 10): Promise<User[]> {
+    return this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
+      .where('user.deleted_at IS NULL')
+      .andWhere(
+        '(LOWER(user.name) LIKE LOWER(:query) OR LOWER(user.email) LIKE LOWER(:query) OR LOWER(user.phone) LIKE LOWER(:query))',
+        { query: `%${query}%` },
+      )
+      .take(limit)
+      .getMany();
+  }
+
+  async checkEmailExists(email: string): Promise<{ exists: boolean }> {
+    const user = await this.findByEmail(email);
+    return { exists: !!user };
+  }
+
+  async checkPhoneExists(phone: string): Promise<{ exists: boolean }> {
+    const user = await this.findByPhone(phone);
+    return { exists: !!user };
+  }
+
+  async getCurrentUserProfile(userId: number): Promise<User> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
+  async updateCurrentUserProfile(userId: number, dto: UpdateUserDto): Promise<User> {
+    return this.update(userId, dto);
+  }
+
+  async updateOnlineStatus(userId: number, isOnline: boolean): Promise<User> {
+    return this.update(userId, { isOnline } as any);
+  }
+
+  async changePassword(userId: number, currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    const user = await this.findByEmailWithPassword((await this.getCurrentUserProfile(userId)).email);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    await this.update(userId, { password: newPassword });
+
+    return { message: 'Password changed successfully' };
   }
 }
